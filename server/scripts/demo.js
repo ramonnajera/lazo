@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // demo.js — arranca un servidor de demostración con una persona y datos FICTICIOS, con horas relativas al momento actual
 // (así, al grabar el video, siempre hay una toma «que toca ahora»).
-//   LAZO_PORT (18800) · LAZO_HOST (127.0.0.1) · LAZO_DATA (archivo temporal nuevo en cada arranque)
+//   LAZO_PORT (18800) · LAZO_HOST (127.0.0.1) · LAZO_DATA (archivo temporal nuevo en cada arranque) · LAZO_LOG=1 (registra peticiones)
 
 const http = require('http');
 const os = require('os');
@@ -54,7 +54,14 @@ async function sembrar(base) {
 }
 
 const app = createApp({ dataFile: DATA });
-const servidor = http.createServer(app.handler);
+// LAZO_LOG=1: una línea por petición (método, ruta sin parámetros y estado; nunca cuerpos ni tokens)
+const manejador = process.env.LAZO_LOG
+  ? (req, res) => {
+      res.on('finish', () => console.log(`${new Date().toTimeString().slice(0, 8)} ${req.method} ${req.url.split('?')[0]} ${res.statusCode}`));
+      app.handler(req, res);
+    }
+  : app.handler;
+const servidor = http.createServer(manejador);
 servidor.listen(PORT, HOST, async () => {
   const base = `http://${HOST}:${PORT}`;
   try {
