@@ -1,0 +1,68 @@
+[package]
+name = "lazo-desktop"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "lazo_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-single-instance = "2"
+# Inicio con Windows solo en HKCU (el plugin de Tauri escribe en HKLM si puede).
+auto-launch = "0.6"
+windows-registry = "0.6"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+lazo-core = { path = "../crates/lazo-core" }
+
+keyring = { version = "3", features = ["windows-native"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+base64 = "0.22"
+# Micrófono (WASAPI) y Parakeet local vía sherpa-onnx (onnxruntime enlazado estáticamente).
+cpal = "0.18"
+sherpa-onnx = { version = "1.13.8", default-features = false, features = ["static"] }
+sha2 = "0.10"
+# Teclas globales: gancho de teclado de bajo nivel, SendInput (Ctrl+V, supresión del menú de Alt)
+# y el portapapeles completo del dictado. Órdenes: ShellExecuteW, volumen (IAudioEndpointVolume),
+# bloquear/suspender.
+windows = { version = "0.62", features = [
+  "Foundation",
+  "Foundation_Collections",
+  "Media_Control",
+  "Storage_Streams",
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_Media_Audio",
+  "Win32_Media_Audio_Endpoints",
+  "Win32_Security",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
+  "Win32_System_Environment",
+  "Win32_System_Power",
+  "Win32_System_RemoteDesktop",
+  "Win32_System_Shutdown",
+  "Win32_UI_Shell",
+  "Win32_System_DataExchange",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Memory",
+  "Win32_System_SystemInformation",
+  "Win32_System_Threading",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_WindowsAndMessaging",
+] }
+# Atajos abrir isla / chat.
+tauri-plugin-global-shortcut = "2"

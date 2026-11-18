@@ -1,0 +1,331 @@
+/* Tokens del rediseño de la isla (spec 2026-10-26 §4). Única fuente de medidas y colores. */
+:root {
+  --island-w: 372px;
+  --listen-w: 300px;
+  --bar-h: 36px;
+  --radius-bar: 16px;
+  --radius-open: 20px;
+
+  --bg: #000;
+  --edge: rgba(255, 255, 255, 0.06);
+  --shadow: 0 10px 40px rgba(0, 0, 0, 0.55);
+  --sep: rgba(255, 255, 255, 0.12);
+  --hover: rgba(255, 255, 255, 0.12);
+
+  --text: #f2f2f2;
+  --text-2: #9a9aa2;
+  --text-3: #8b8b93;
+  --icon: #c9c9cf;
+
+  --count-bg: #fff;
+  --count-fg: #000;
+  --music: #30d158;
+  --blue: #0a84ff;
+  --pri-urgent: #ff453a;
+  --pri-high: #ff9f0a;
+  --pri-normal: #636366;
+  --surface-1: rgba(255, 255, 255, 0.05);
+  --surface-2: rgba(255, 255, 255, 0.06);
+  --seg-fg: #a4a4ac;
+  --seg-on-bg: #fff;
+  --seg-on-fg: #111;
+  --chk-border: #6b6b73;
+  --av-bg: #3a3a40;
+  --av-fg: #ddd;
+  --rec: #8e5cf0;
+  --live: #ff453a;
+  --bubble-lazo: #1f1f23;
+  --field-bg: #1a1a1e;
+  --field-fg: #e8e8ec;
+  --field-ph: #77777f;
+  --avail: calc(360px - var(--bar-h));
+
+  --font: "Inter", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-size: 13px;
+
+  --list-max: 230px;
+  --row-h: 32px;
+  --row-radius: 9px;
+  --icon-btn: 26px;
+  --icon-btn-radius: 8px;
+  --icon-size: 16px;
+  --icon-stroke: 1.8;
+  --chip-size: 11px;
+  --chip-radius: 999px;
+
+  /* Colores de evento de Google Calendar (colorId 1–11), en tonos que se ven sobre negro. */
+  --gc-1: #a4a9e8; --gc-2: #5fd39a; --gc-3: #b66ae0; --gc-4: #ff7eb6; --gc-5: #f6c744; --gc-6: #ff7a45;
+  --gc-7: #3bb4f2; --gc-8: #8e8e93; --gc-9: #4d8dff; --gc-10: #34c759; --gc-11: #ff453a;
+}
+
+/* La isla es instantánea: nada se anima. */
+html.island *, html.island *::before, html.island *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+.isl {
+  background: var(--bg);
+  color: var(--text);
+  font: 500 var(--font-size) / 1.25 var(--font);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  border-radius: 0 0 var(--radius-open) var(--radius-open);
+  width: var(--island-w);
+  max-width: var(--island-w);
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+.isl[data-view="bar"], .isl[data-view="music"] { border-radius: 0 0 var(--radius-bar) var(--radius-bar); }
+.isl[data-view="listening"] { width: var(--listen-w); border-radius: 0 0 var(--radius-bar) var(--radius-bar); }
+.isl[data-view="hidden"] { background: transparent; box-shadow: none; height: 4px; }
+
+.bar { display: flex; align-items: center; gap: 8px; height: var(--bar-h); padding: 0 12px; white-space: nowrap; }
+.bar-time { font: inherit; font-weight: 600; letter-spacing: 0.2px; color: inherit; background: transparent; border: 0; padding: 3px 4px; margin: 0 -4px; border-radius: var(--chip-radius); cursor: pointer; }
+.bar-clock { font-weight: 600; letter-spacing: 0.2px; }
+.count.urgent { background: var(--gc-11); color: #000; }
+.bar-sep { width: 1px; height: 16px; background: var(--sep); flex: none; }
+.bar-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--music); box-shadow: 0 0 6px var(--music); flex: none; padding: 0; border: 0; cursor: pointer; }
+.bar-dot.paused { background: var(--text-3); box-shadow: none; }
+.icon-btn {
+  width: var(--icon-btn); height: var(--icon-btn); border-radius: var(--icon-btn-radius);
+  display: grid; place-items: center; flex: none; padding: 0; border: 0; background: transparent;
+  color: var(--icon); cursor: pointer;
+}
+.icon-btn:hover { background: var(--edge); }
+.icon-btn[aria-pressed="true"] { background: var(--hover); color: #fff; }
+.icon-btn svg { width: var(--icon-size); height: var(--icon-size); }
+.count { background: var(--count-bg); color: var(--count-fg); border-radius: var(--chip-radius); padding: 3px 7px; font-weight: 700; font-size: var(--chip-size); flex: none; border: 0; font-family: inherit; cursor: pointer; }
+.bar-tail { display: flex; align-items: center; gap: 8px; margin-left: auto; min-width: 0; }
+.bar-next { color: var(--text-2); font: inherit; font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; border: 0; padding: 3px 4px; margin: 0 -4px; border-radius: var(--chip-radius); cursor: pointer; }
+.bar-next:hover { background: var(--edge); color: var(--text); }
+.count:hover { opacity: 0.85; }
+.count.zero { background: var(--hover); color: var(--text-2); }
+.count[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--hover); }
+
+/* Las secciones miden lo que su contenido (el historial del chat tiene su propio tope). */
+.isl-section { overflow: hidden; }
+.isl-form { display: flex; flex-direction: column; }
+.isl[data-banner] { --avail: calc(360px - var(--bar-h) - 64px); }
+.isl-banner { height: 64px; border-top: 1px solid var(--edge); }
+.isl { position: relative; }
+/* Escondida o detrás de la escucha/aviso, la barra no ocupa lugar pero se sigue midiendo. */
+/* Mismo gap y relleno que la barra sola (.isl[data-view="bar"] .bar): su ancho medido es el de la barra. */
+.isl .bar[aria-hidden="true"] { position: absolute; top: 0; left: 0; width: var(--island-w); pointer-events: none; gap: 8px; padding: 0 12px; }
+/* Píldora de escucha sobre la sección o el formulario abiertos. */
+.isl-listen-overlay { position: absolute; top: 0; left: 0; right: 0; z-index: 2; background: var(--bg); border-radius: 0 0 var(--radius-bar) var(--radius-bar); box-shadow: inset 0 0 0 1px var(--edge); }
+
+/* Cuerpo compacto de las secciones (maqueta 02). */
+.pf { padding: 2px 10px 10px; box-sizing: border-box; max-height: var(--avail); overflow-y: auto; scrollbar-width: none; }
+.pf-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 4px; }
+.pf-title { font-weight: 650; font-size: var(--font-size); }
+.seg { display: flex; gap: 4px; }
+.seg button { font: inherit; font-size: var(--chip-size); padding: 2px 8px; border: 0; border-radius: var(--chip-radius); background: var(--surface-2); color: var(--seg-fg); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--seg-on-bg); color: var(--seg-on-fg); }
+.crow { display: flex; align-items: center; gap: 9px; height: var(--row-h); border-radius: var(--row-radius); padding: 0 6px; white-space: nowrap; position: relative; }
+.crow:hover { background: var(--edge); }
+.crow .txt { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; }
+.crow .lt { color: var(--text-3); font-size: 12px; flex: none; min-width: 62px; }
+.crow .right { margin-left: auto; color: var(--text-3); font-size: 12px; flex: none; }
+.crow .amt { font-weight: 600; color: var(--text); font-size: inherit; }
+/* Acciones: ocultas a la vista pero enfocables (teclado y lectores de pantalla). */
+.crow .acts { position: absolute; right: 4px; top: 0; bottom: 0; display: flex; align-items: center; gap: 4px; background: var(--bg); padding-left: 6px; opacity: 0; pointer-events: none; }
+.crow:hover .acts, .crow:focus-within .acts, .crow .acts:has(.act-fail) { opacity: 1; pointer-events: auto; }
+.crow:hover .right, .crow:focus-within .right { visibility: hidden; }
+.chk { width: 15px; height: 15px; border-radius: 50%; border: 1.6px solid var(--chk-border); background: transparent; padding: 0; flex: none; cursor: pointer; }
+.chk:hover { border-color: var(--text); }
+/* Raya de prioridad/tipo. No usar `.pri` a secas: es el modificador del botón principal (.fm-b.pri, .al-b.pri). */
+.pri-dot { width: 3px; height: 14px; border-radius: 2px; flex: none; }
+.av { width: 20px; height: 20px; border-radius: 50%; background: var(--av-bg); display: grid; place-items: center; font-size: 10px; color: var(--av-fg); flex: none; }
+.cadd { display: flex; align-items: center; gap: 6px; height: 30px; width: 100%; padding: 0 8px; margin-top: 4px; border: 0; border-radius: var(--row-radius); background: var(--surface-1); color: var(--text-3); font: inherit; font-size: 12px; cursor: pointer; text-align: left; }
+.cadd:hover { background: var(--edge); }
+.cmore { background: none; border: 0; color: var(--text-3); font: inherit; font-size: 12px; padding: 4px 6px; cursor: pointer; }
+.cmore:hover { color: var(--text); }
+.cday { padding: 6px 6px 2px; font-size: 11px; font-weight: 650; color: var(--text-2); }
+.ctotal { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 6px 6px; }
+.ctotal .mut { color: var(--text-2); font-size: 12px; }
+.ctotal .big { font-size: 20px; font-weight: 700; }
+.cempty { padding: 8px 6px; color: var(--text-3); font-size: 12px; }
+.cbanner { margin: 4px 0; border-radius: 8px; background: rgba(255, 159, 10, 0.15); color: #ffb340; font-size: 12px; padding: 4px 8px; }
+
+/* Listas (maqueta 03, opción C). */
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 4px 2px; }
+.tile { background: var(--surface-1); border: 0; border-radius: 10px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 6px; color: inherit; font: inherit; cursor: pointer; text-align: left; min-width: 0; }
+.tile:hover { background: var(--edge); }
+.tile .tile-name { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Ícono de trazo en un círculo gris (en vez de emoji), como las listas de lazo-watch. */
+.tile-ic { width: 22px; height: 22px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; flex: none; color: var(--text); }
+.tile-ic svg { width: 13px; height: 13px; }
+.tiles-group + .tiles-group { margin-top: 6px; }
+.tiles-title { font-size: 11px; font-weight: 650; color: var(--text-2); padding: 4px 6px 0; }
+.tile small { color: var(--text-3); font-size: 11px; flex: none; }
+.cback { display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px; }
+.lrow { height: 34px; }
+.cv { width: 22px; height: 30px; border-radius: 4px; flex: none; background: var(--surface-2); object-fit: cover; }
+.st { margin-left: auto; font-size: 10.5px; padding: 2px 7px; border-radius: var(--chip-radius); flex: none; background: var(--surface-2); color: var(--seg-fg); }
+.st-doing { background: rgba(10, 132, 255, 0.2); color: #64b5ff; }
+.crow:hover .st, .crow:focus-within .st { visibility: hidden; }
+.pf-list { max-height: none; overflow-y: visible; }
+/* Única fuente del tope de las listas internas con scroll: --list-max, o menos si el aviso está abierto. */
+.list-scroll { max-height: min(var(--list-max), calc(var(--avail) - 110px)); overflow-y: auto; }
+/* Barras de scroll discretas, del color de la isla (las de Windows por defecto son blancas). */
+.isl * { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent; }
+.isl .pf { scrollbar-width: none; }
+.crow .right.price { margin-left: auto; }
+.crow .right.price + .st { margin-left: 0; }
+
+/* Chat (maqueta 04). */
+.chat { padding: 4px 10px 10px; }
+.chat-msgs { display: flex; flex-direction: column; gap: 6px; padding: 2px 2px 8px; max-height: min(240px, calc(var(--avail) - 64px)); overflow-y: auto; }
+.chat-empty { color: var(--text-3); font-size: 12px; padding: 4px 2px; }
+.bub { white-space: pre-wrap; margin: 0; padding: 6px 10px; overflow-wrap: anywhere; }
+.bub-me { align-self: flex-end; background: var(--blue); color: #fff; border-radius: 14px 14px 4px 14px; max-width: 78%; }
+.bub-al { align-self: flex-start; background: var(--bubble-lazo); border-radius: 14px 14px 14px 4px; max-width: 84%; }
+.bub-err { align-self: flex-start; background: rgba(255, 69, 58, 0.18); color: #ff9f98; border-radius: 14px 14px 14px 4px; max-width: 84%; }
+.think { display: flex; gap: 4px; align-self: flex-start; padding: 8px 10px; background: var(--bubble-lazo); border-radius: 14px; }
+.think i { width: 5px; height: 5px; border-radius: 50%; background: var(--text-3); display: block; }
+.chat-input { display: flex; align-items: center; gap: 6px; background: var(--field-bg); border-radius: 999px; padding: 4px 4px 4px 12px; }
+.chat-input input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--field-fg); font: inherit; }
+.chat-input input::placeholder { color: var(--text-3); }
+.chat-btn { width: var(--icon-btn); height: var(--icon-btn); border-radius: 50%; display: grid; place-items: center; flex: none; padding: 0; border: 0; background: transparent; color: var(--icon); cursor: pointer; }
+.chat-btn svg { width: 15px; height: 15px; }
+.chat-btn:hover { background: var(--edge); }
+.chat-btn.go { background: var(--blue); color: #fff; }
+.chat-btn.go:disabled { opacity: 0.5; }
+.chat-btn.rec { background: var(--rec); color: #fff; }
+
+/* Formularios compactos (maqueta 04). */
+.fm { display: flex; flex-direction: column; box-sizing: border-box; max-height: var(--avail); padding: 4px 10px 10px; }
+.fm-head { display: flex; justify-content: space-between; align-items: baseline; font-weight: 650; font-size: var(--font-size); padding: 4px 2px 8px; flex: none; }
+.fm-head .mut { color: var(--text-2); font-size: 12px; font-weight: 500; }
+.fm-body { min-height: 0; flex: 1; overflow-y: auto; }
+.fm-lbl { display: block; }
+.fm-lbl > .sr, .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.fm-in { display: block; width: 100%; box-sizing: border-box; background: var(--field-bg); color: var(--field-fg); border: 0; border-radius: 9px; padding: 8px 10px; margin-bottom: 6px; font: inherit; outline: 0; color-scheme: dark; }
+.fm-in::placeholder { color: var(--field-ph); }
+.fm-in:focus { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3); }
+.fm-in:disabled { opacity: 0.45; }
+.fm-two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.fm-two.wide { grid-template-columns: 2fr 1fr; }
+.fm-row { display: flex; align-items: center; gap: 6px; margin: 2px 0 8px; flex-wrap: wrap; }
+.fm-row > .fm-gl { font-size: 11px; color: var(--text-2); }
+.fm .seg button { padding: 3px 9px; }
+.fm-err { display: block; color: #ff9f98; font-size: 11px; margin: -3px 0 6px 2px; }
+.fm-hint { color: var(--text-3); font-size: 11px; margin: 0 0 6px 2px; }
+.fm-alert { background: rgba(255, 69, 58, 0.15); color: #ff9f98; border-radius: 8px; font-size: 12px; padding: 4px 8px; margin-bottom: 6px; flex: none; }
+.fm-btns { display: flex; justify-content: flex-end; gap: 6px; flex: none; padding-top: 2px; }
+.fm-b { flex: none; white-space: nowrap; font: inherit; font-size: 12px; padding: 6px 12px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.08); color: var(--text); cursor: pointer; }
+.fm-b:hover { background: var(--hover); }
+.fm-b.pri { background: var(--seg-on-bg); color: var(--seg-on-fg); font-weight: 650; }
+.fm-b:disabled { opacity: 0.5; }
+.fm-small { font: inherit; font-size: 11px; padding: 3px 9px; border: 0; border-radius: 999px; background: var(--surface-2); color: var(--seg-fg); cursor: pointer; }
+.fm-covers { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; }
+.fm-covers button { height: 80px; width: 56px; flex: none; padding: 0; border: 2px solid transparent; border-radius: 6px; overflow: hidden; background: none; cursor: pointer; }
+.fm-covers button[aria-pressed="true"] { border-color: #fff; }
+.fm-covers img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Música (maqueta 06, v2). */
+.mus { padding: 14px; }
+.mus-top { display: flex; align-items: center; gap: 12px; }
+.mus-cover { width: 56px; height: 56px; border-radius: 10px; flex: none; object-fit: cover; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4); }
+.mus-cover.ph { display: grid; place-items: center; background: var(--surface-2); font-size: 22px; box-shadow: none; }
+.mus-meta { flex: 1; min-width: 0; }
+.mus-title { font-weight: 650; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mus-sub { color: var(--text-2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mus-ctl { display: flex; align-items: center; gap: 6px; flex: none; }
+.mus-cb { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #e8e8ec; cursor: pointer; }
+.mus-cb:hover { background: var(--hover); }
+.mus-cb svg { width: 20px; height: 20px; }
+.mus-cb.play { width: 40px; height: 40px; background: #fff; color: #111; }
+.mus-cb.play:hover { background: rgba(255, 255, 255, 0.85); }
+.mus-prog { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.mus-range { flex: 1; min-width: 0; height: 4px; accent-color: #fff; cursor: pointer; }
+
+/* Aviso (maqueta 07, v3): renglón de 38 px y botones centrados. */
+.al { color: var(--text); }
+.al-row { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; }
+.al-title { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.al-when { margin-left: auto; color: var(--text-2); font-size: 12px; flex: none; white-space: nowrap; }
+.al-err { color: #ff9f98; font-size: 11px; padding: 0 14px 4px; text-align: center; }
+.al-btns { display: flex; justify-content: center; gap: 8px; padding: 0 0 10px; }
+.al-b { flex: none; white-space: nowrap; font: inherit; font-size: 12px; padding: 5px 12px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.09); color: var(--text); cursor: pointer; }
+.al-b:hover { background: var(--hover); }
+.al-b.pri { background: #fff; color: #111; font-weight: 650; }
+.al.banner { display: flex; align-items: center; height: 100%; }
+.al.banner .al-row { flex: 1; min-width: 0; height: auto; padding: 0 0 0 14px; }
+.al.banner .al-when { margin: 0 10px 0 auto; }
+.al.banner .al-btns { padding: 0 14px 0 0; gap: 6px; flex: none; }
+
+/* Escuchando (maqueta 05): píldora de 300 px; las fases con texto crecen hasta 160 px con scroll. */
+.lis { display: flex; align-items: center; gap: 8px; min-height: 40px; max-height: 160px; overflow-y: auto; padding: 0 14px; box-sizing: border-box; }
+.lis-dot { width: 22px; height: 22px; border-radius: 50%; background: var(--live); flex: none; display: grid; place-items: center; }
+.lis-dot::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+.lis-tag { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); color: var(--icon); flex: none; }
+.lis-wave { display: flex; align-items: center; gap: 2px; height: 18px; }
+.lis-wave i { width: 3px; border-radius: 2px; background: var(--text); display: block; }
+.lis-time { margin-left: auto; color: var(--text-2); font-size: 12px; flex: none; }
+.lis-body { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 0; flex-wrap: wrap; }
+.lis-text { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; text-align: center; }
+.lis-err { color: #ff9f98; }
+.lis-b { font: inherit; font-size: 11px; padding: 2px 9px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.12); color: var(--text); cursor: pointer; flex: none; }
+.lis-b:hover { background: rgba(255, 255, 255, 0.22); }
+
+/* Calendario mensual (clic en el reloj). Todo cabe en --avail (la ventana mide 360 px): sin scroll hasta el botón. */
+.isl { --cal-cell: 28px; }
+.isl[data-banner] { --cal-cell: 22px; }
+.pf:has(> .cal), .pf:has(.cal) { padding-bottom: 8px; }
+.cal-head { padding: 2px 6px; }
+.cal-nav { display: flex; gap: 2px; }
+.cal-nav .icon-btn { width: 24px; height: 24px; }
+.cal-next svg { transform: scaleX(-1); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; padding: 0 0 6px; }
+.cal-wd { text-align: center; font-size: 10px; font-weight: 650; color: var(--text-3); padding: 2px 0; line-height: 12px; }
+.cal-day { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; height: var(--cal-cell); padding: 0; border: 0; border-radius: var(--row-radius); background: transparent; color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+.cal-day:hover { background: var(--edge); }
+.cal-day.out { color: var(--text-3); }
+.cal-day.today .cal-n { background: var(--count-bg); color: var(--count-fg); font-weight: 700; }
+.cal-day[aria-selected="true"] { background: var(--hover); }
+.cal-n { display: grid; place-items: center; min-width: 18px; height: 18px; border-radius: 999px; line-height: 1; }
+.isl[data-banner] .cal-n { height: 14px; min-width: 14px; font-size: 11px; }
+.cal-dots { display: flex; align-items: center; gap: 2px; height: 7px; }
+.gift-mark { width: 7px; height: 7px; flex: none; }
+.crow .gift-mark { width: 11px; height: 11px; }
+.cal-dots i { width: 4px; height: 4px; border-radius: 50%; }
+.cal-dayhead { display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 26px; padding: 0 2px 0 6px; }
+.cal-daylabel { font-size: 11px; font-weight: 650; color: var(--text-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-add { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border: 0; border-radius: var(--chip-radius); background: var(--surface-1); color: var(--text-2); font: inherit; font-size: 11px; cursor: pointer; flex: none; white-space: nowrap; }
+.cal-add:hover { background: var(--edge); color: var(--text); }
+/* Alto restante = --avail − relleno (10) − encabezado (28) − días (16) − cuadrícula (filas × (celda+1) + 5) − línea del día (26). */
+.cal-list { max-height: max(32px, calc(var(--avail) - 10px - 28px - 16px - 5px - var(--cal-rows) * (var(--cal-cell) + 1px) - 26px)); overflow-y: auto; scrollbar-width: none; }
+
+/* ---- Lazo: toma de medicina, citas, apoyos ---- */
+.hoy-date { color: var(--text-2); font-size: 12px; }
+.hoy-card { border: 2px solid var(--edge-strong, #555); border-radius: 14px; padding: 10px 12px; margin: 2px 0 6px; display: grid; gap: 3px; }
+.hoy-card.urgent { border-color: var(--gc-5); }
+.hoy-kicker { color: var(--text-2); font-size: 11px; font-weight: 600; }
+.hoy-name { font-size: 20px; font-weight: 800; line-height: 1.15; }
+.hoy-dose { font-size: 13px; font-weight: 600; }
+.hoy-note { color: var(--text-2); font-size: 12px; }
+.hoy-btns { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.hoy-btns .fm-b { min-height: 38px; flex: 1 1 auto; font-weight: 700; font-size: 12px; }
+.hoy-btns .fm-b.pri { flex: 2 1 120px; font-size: 14px; }
+.st { display: inline-flex; align-items: center; gap: 4px; width: fit-content; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1.5px solid var(--text-3); white-space: nowrap; flex: none; }
+.st-tomada { background: var(--gc-10); color: #000; border-color: var(--gc-10); }
+.st-atrasada { background: var(--gc-11); color: #000; border-color: var(--gc-11); }
+.st-ahora { background: #fff; color: #000; border-color: #fff; }
+.st-pospuesta { background: var(--gc-5); color: #000; border-color: var(--gc-5); }
+.st-omitida { color: var(--text-2); }
+.undo { flex: none; background: none; border: 1.5px solid var(--text-3); color: var(--text); border-radius: 8px; padding: 3px 8px; font: inherit; font-size: 11px; cursor: pointer; }
+.undo:hover { background: var(--edge); }
+.crow .st { margin-left: auto; }
+.cita { padding: 6px 6px 8px; border-radius: var(--row-radius); }
+.cita:hover { background: var(--edge); }
+.cita-top { display: flex; gap: 10px; align-items: baseline; }
+.cita-when { color: var(--text-2); font-size: 12px; flex: none; min-width: 92px; }
+.cita-name { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cita-sub { color: var(--text-2); font-size: 12px; margin-left: 102px; }
+.cita-sub.aviso { color: var(--gc-5); }
+.cita-sub.aviso.alta { color: var(--gc-11); }
+.apoyos-nota { color: var(--text-3); font-size: 11px; padding: 6px 6px 0; }
+.crow.apoyo { height: auto; min-height: var(--row-h); align-items: flex-start; padding: 6px; }
+.crow.apoyo .txt { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; }
+.crow.apoyo .undo { align-self: center; }

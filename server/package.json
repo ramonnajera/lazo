@@ -1,0 +1,9 @@
+{
+  "name": "lazo-server",
+  "version": "1.0.0",
+  "description": "Servidor de Lazo: medicamentos, citas, seguimiento, círculo de cuidado y convocatorias",
+  "private": true,
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": { "start": "node src/index.js", "test": "node --test \"test/*.test.js\"" }
+}

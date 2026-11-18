@@ -1,0 +1,12 @@
+_ref/
+node_modules/
+target/
+dist/
+build/
+.gradle/
+local.properties
+secrets.properties
+*.apk
+.env
+.env.*
+*.log
