@@ -118,13 +118,13 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         val url = normalizarUrl(servidor) ?: return avisar("La dirección del servidor no es válida. Revisa las opciones avanzadas.")
         if (nombre.isBlank()) return avisar("Escribe tu nombre.")
         viewModelScope.launch {
-            _ui.update { it.copy(cargando = true) }
+            _ui.update { it.copy(cargando = true, mensaje = null) }
             try {
                 val r = LazoApi(url).crearPerfil(nombre.trim(), discapacidad, textoGrande, altoContraste)
                 prefs.cerrarSesion(); cache.clear()
                 prefs.servidor = url; prefs.token = r.getString("token"); prefs.nombre = nombre.trim(); prefs.rol = Rol.PERSONA
                 prefs.escalaTexto = if (textoGrande) 1.4f else 1.0f; prefs.altoContraste = altoContraste
-                _ui.update { it.copy(rol = Rol.PERSONA, nombre = nombre.trim(), escala = prefs.escalaTexto, altoContraste = altoContraste, cargando = false) }
+                _ui.update { it.copy(rol = Rol.PERSONA, nombre = nombre.trim(), escala = prefs.escalaTexto, altoContraste = altoContraste, cargando = false, mensaje = null) }
                 AlertasJobService.programar(app)
                 refrescar()
             } catch (e: ApiException) {
@@ -137,12 +137,12 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         val url = normalizarUrl(servidor) ?: return avisar("La dirección del servidor no es válida. Revisa las opciones avanzadas.")
         if (codigo.length != 6 || nombre.isBlank()) return avisar("Escribe el código de 6 dígitos y tu nombre.")
         viewModelScope.launch {
-            _ui.update { it.copy(cargando = true) }
+            _ui.update { it.copy(cargando = true, mensaje = null) }
             try {
                 val r = LazoApi(url).unirse(codigo, nombre.trim(), parentesco.trim())
                 prefs.cerrarSesion(); cache.clear()
                 prefs.servidor = url; prefs.token = r.getString("token"); prefs.nombre = nombre.trim(); prefs.rol = Rol.CUIDADOR
-                _ui.update { it.copy(rol = Rol.CUIDADOR, nombre = nombre.trim(), cargando = false) }
+                _ui.update { it.copy(rol = Rol.CUIDADOR, nombre = nombre.trim(), cargando = false, mensaje = null) }
                 AlertasJobService.programar(app)
                 refrescar()
             } catch (e: ApiException) {
@@ -156,14 +156,14 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         val url = normalizarUrl(servidor) ?: return avisar("La dirección del servidor no es válida. Revisa las opciones avanzadas.")
         if (codigo.length != 6) return avisar("Escribe el código de 6 dígitos.")
         viewModelScope.launch {
-            _ui.update { it.copy(cargando = true) }
+            _ui.update { it.copy(cargando = true, mensaje = null) }
             try {
                 val r = LazoApi(url).vincularDispositivo(codigo, nombreDispositivo.ifBlank { "Mi dispositivo" }.trim())
                 val perfil = Perfil.de(r.getJSONObject("perfil"))
                 prefs.cerrarSesion(); cache.clear()
                 prefs.servidor = url; prefs.token = r.getString("token"); prefs.nombre = perfil.nombre; prefs.rol = Rol.PERSONA
                 prefs.escalaTexto = if (perfil.textoGrande) 1.4f else 1.0f; prefs.altoContraste = perfil.altoContraste
-                _ui.update { it.copy(rol = Rol.PERSONA, nombre = perfil.nombre, escala = prefs.escalaTexto, altoContraste = perfil.altoContraste, cargando = false) }
+                _ui.update { it.copy(rol = Rol.PERSONA, nombre = perfil.nombre, escala = prefs.escalaTexto, altoContraste = perfil.altoContraste, cargando = false, mensaje = null) }
                 AlertasJobService.programar(app)
                 refrescar()
             } catch (e: ApiException) {
@@ -270,7 +270,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun actualizarConvocatorias() {
         viewModelScope.launch {
-            _ui.update { it.copy(cargando = true) }
+            _ui.update { it.copy(cargando = true, mensaje = null) }
             try {
                 val r = api().actualizarConvocatorias()
                 if (!r.optBoolean("ok", true)) avisar("No pude leer la página de la Secretaría: ${r.optString("error")}. Se conserva la lista anterior.")

@@ -98,7 +98,8 @@ class LazoApi(base: String, private val token: String? = null) {
         } catch (e: ApiException) {
             throw e
         } catch (e: IOException) {
-            throw ApiException("No pude conectar con el servidor. Revisa la dirección y la conexión.")
+            android.util.Log.w("LazoApi", "$method $path falló", e)
+            throw ApiException("No pude conectar con el servidor (${e.javaClass.simpleName}: ${e.message ?: "sin detalle"}). Revisa tu conexión a internet.")
         } finally {
             conn.disconnect()
         }
