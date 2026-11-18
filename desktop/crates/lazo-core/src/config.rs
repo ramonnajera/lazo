@@ -171,6 +171,9 @@ impl Default for MusicCfg {
     }
 }
 
+/// Servidor de Lazo ya montado: la persona no tiene que escribir ninguna dirección.
+pub const DEFAULT_API_URL: &str = "https://optiplex3090.tailcf0c15.ts.net/lazo";
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct ConnectionCfg {
@@ -179,7 +182,7 @@ pub struct ConnectionCfg {
 }
 impl Default for ConnectionCfg {
     fn default() -> Self {
-        Self { api_url: "http://localhost:18800".into(), refresh_sec: 60 }
+        Self { api_url: DEFAULT_API_URL.into(), refresh_sec: 60 }
     }
 }
 
@@ -212,7 +215,7 @@ mod tests {
         assert_eq!(c.keys.dictation, "RightCtrl");
         assert_eq!(c.keys.lazo, "RightAlt");
         assert_eq!(c.keys.open_island, "Ctrl+Alt+Space");
-        assert_eq!(c.connection.api_url, "http://localhost:18800");
+        assert_eq!(c.connection.api_url, DEFAULT_API_URL);
         assert_eq!(c.connection.refresh_sec, 60);
     }
 

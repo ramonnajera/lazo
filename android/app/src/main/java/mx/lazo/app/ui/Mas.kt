@@ -35,7 +35,7 @@ fun PantallaMas(ui: Ui, abrir: (Pantalla) -> Unit) {
         }
         item { BotonGrande("Letra, contraste y voz", { abrir(Pantalla.Accesibilidad) }, tono = Tono.NEUTRO, icono = Icons.Filled.Accessibility) }
         item { BotonGrande("Conexión", { abrir(Pantalla.Conexion) }, tono = Tono.NEUTRO, icono = Icons.Filled.Settings) }
-        item { Cuerpo("Lazo ${BuildConfig.VERSION_NAME}. Tus datos están en tu servidor y solo los ve quien tú invites.", secundario = true) }
+        item { Cuerpo("Lazo ${BuildConfig.VERSION_NAME}. Tus datos están en el servidor de Lazo, separados de los de cualquier otra persona, y solo los ve quien tú invites.", secundario = true) }
     }
 }
 

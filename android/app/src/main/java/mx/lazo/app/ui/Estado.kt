@@ -115,7 +115,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     // ---------- conectar ----------
     fun conectarPersona(servidor: String, nombre: String, discapacidad: Discapacidad, textoGrande: Boolean, altoContraste: Boolean) {
-        val url = normalizarUrl(servidor) ?: return avisar("Escribe la dirección del servidor, por ejemplo 192.168.1.5:18800.")
+        val url = normalizarUrl(servidor) ?: return avisar("La dirección del servidor no es válida. Revisa las opciones avanzadas.")
         if (nombre.isBlank()) return avisar("Escribe tu nombre.")
         viewModelScope.launch {
             _ui.update { it.copy(cargando = true) }
@@ -128,13 +128,13 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                 AlertasJobService.programar(app)
                 refrescar()
             } catch (e: ApiException) {
-                _ui.update { it.copy(cargando = false, mensaje = if (e.codigo == 409) "Este servidor ya tiene una persona. Si eres cuidador, elige «Soy cuidador»." else e.message) }
+                _ui.update { it.copy(cargando = false, mensaje = when (e.codigo) { 409 -> "Este servidor es de una sola persona. Si eres cuidador, elige «Soy cuidador»."; 503 -> "Este servidor ya no admite más personas."; 429 -> "Hay demasiados registros en este momento. Intenta en unos minutos."; else -> e.message }) }
             }
         }
     }
 
     fun conectarCuidador(servidor: String, codigo: String, nombre: String, parentesco: String) {
-        val url = normalizarUrl(servidor) ?: return avisar("Escribe la dirección del servidor, por ejemplo 192.168.1.5:18800.")
+        val url = normalizarUrl(servidor) ?: return avisar("La dirección del servidor no es válida. Revisa las opciones avanzadas.")
         if (codigo.length != 6 || nombre.isBlank()) return avisar("Escribe el código de 6 dígitos y tu nombre.")
         viewModelScope.launch {
             _ui.update { it.copy(cargando = true) }
@@ -153,7 +153,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** Entra como la misma persona desde otro dispositivo, con el código de 6 dígitos que generó el primero. */
     fun conectarDispositivo(servidor: String, codigo: String, nombreDispositivo: String) {
-        val url = normalizarUrl(servidor) ?: return avisar("Escribe la dirección del servidor, por ejemplo 192.168.1.5:18800.")
+        val url = normalizarUrl(servidor) ?: return avisar("La dirección del servidor no es válida. Revisa las opciones avanzadas.")
         if (codigo.length != 6) return avisar("Escribe el código de 6 dígitos.")
         viewModelScope.launch {
             _ui.update { it.copy(cargando = true) }

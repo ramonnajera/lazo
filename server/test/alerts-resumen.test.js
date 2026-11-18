@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const M = require('../src/mediciones');
 const A = require('../src/alerts');
 const R = require('../src/resumen');
-const { empty } = require('../src/store');
+const { hogarVacio } = require('../src/store');
+const empty = () => ({ ...hogarVacio(), convocatorias: { items: [], nuevas: [], ultimaLectura: null, error: null, baseline: false } }); // vista de un hogar
 
 const now = (time, date = '2026-11-18') => ({ date, time, minutes: 0, weekday: 3 });
 

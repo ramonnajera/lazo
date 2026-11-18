@@ -10,7 +10,7 @@ from docx.oxml.ns import qn
 from docx.shared import Pt, Cm, RGBColor
 
 # Cifras de las pruebas automáticas del prototipo (se actualizan al cerrar la entrega)
-PRUEBAS = {"servidor": 60, "android": 44, "escritorio_web": 137, "escritorio_rust": 84}
+PRUEBAS = {"servidor": 67, "android": 44, "escritorio_web": 139, "escritorio_rust": 84}
 TOTAL_PRUEBAS = sum(PRUEBAS.values())
 
 doc = Document()

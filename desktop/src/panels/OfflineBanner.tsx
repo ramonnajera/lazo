@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { ApiError } from "../api/types";
 import { hora12 } from "./format";
+import CrearPerfil from "../settings/CrearPerfil";
 
 export function OfflineBanner({ stale, fetchedAt }: { stale: boolean; fetchedAt: number | null }) {
   if (!stale || fetchedAt === null) return null;
@@ -15,10 +16,22 @@ export function OfflineBanner({ stale, fetchedAt }: { stale: boolean; fetchedAt:
 }
 
 function ErrorView({ error }: { error: ApiError }) {
-  if (error.kind === "unauthorized" || error.kind === "no_token") {
+  if (error.kind === "no_token") {
+    return (
+      <div className="flex flex-col items-start gap-3 py-2 text-sm">
+        <span className="font-medium">Bienvenida o bienvenido a Lazo</span>
+        <span className="text-white/60">Crea tu perfil para empezar. Si ya usas Lazo en tu teléfono, vincula esta computadora con un código.</span>
+        <CrearPerfil onListo={() => window.location.reload()} />
+        <button className="rounded-md bg-white/10 px-3 py-1 text-xs hover:bg-white/20" onClick={() => invoke("open_settings", { section: "connection" })}>
+          Ya uso Lazo: tengo un código
+        </button>
+      </div>
+    );
+  }
+  if (error.kind === "unauthorized") {
     return (
       <div className="flex flex-col items-start gap-2 py-2 text-sm">
-        <span className="text-red-300">{error.kind === "unauthorized" ? "Token inválido" : "Falta el token"}</span>
+        <span className="text-red-300">Token inválido</span>
         <button
           className="rounded-md bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
           onClick={() => invoke("open_settings", { section: "connection" })}

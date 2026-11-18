@@ -4,6 +4,7 @@ import { getTomas } from "../api/client";
 import type { ApiError } from "../api/types";
 import type { Config } from "../config/types";
 import { Field, btnCls, inputCls } from "./ui";
+import CrearPerfil from "./CrearPerfil";
 
 interface Props {
   config: Config;
@@ -85,7 +86,20 @@ export default function Connection({ config, saveConfig }: Props) {
   return (
     <div className="max-w-md space-y-5">
       <h1 className="text-lg font-semibold">Conexión</h1>
-      <Field label="URL de la API">
+      <Field label="Soy nueva o nuevo en Lazo">
+        <CrearPerfil onListo={async () => { await getTomas(); setResult({ ok: true, text: "✓ Perfil creado" }); }} />
+      </Field>
+      <Field label="O entra con un código de 6 dígitos de otro dispositivo">
+        <div className="flex gap-2">
+          <input className={inputCls} inputMode="numeric" value={code} placeholder="Ej.: 123456" onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} aria-label="Código de 6 dígitos" />
+          <button className={btnCls} disabled={busy || code.length !== 6} onClick={vincular}>
+            Vincular
+          </button>
+        </div>
+      </Field>
+      <details className="space-y-3">
+        <summary className="cursor-pointer text-sm text-white/70">Opciones avanzadas (servidor propio y token)</summary>
+      <Field label="Servidor de Lazo">
         <input className={inputCls} value={url} onChange={(e) => setUrl(e.target.value)} spellCheck={false} />
       </Field>
       <Field label="Token (se guarda en el Administrador de credenciales)">
@@ -98,14 +112,7 @@ export default function Connection({ config, saveConfig }: Props) {
           autoComplete="off"
         />
       </Field>
-      <Field label="O entra con un código de 6 dígitos de otro dispositivo">
-        <div className="flex gap-2">
-          <input className={inputCls} inputMode="numeric" value={code} placeholder="Ej.: 123456" onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} aria-label="Código de 6 dígitos" />
-          <button className={btnCls} disabled={busy || code.length !== 6} onClick={vincular}>
-            Vincular
-          </button>
-        </div>
-      </Field>
+      </details>
       <div className="flex gap-2">
         <button className={btnCls} disabled={busy} onClick={() => run(false)}>
           Guardar

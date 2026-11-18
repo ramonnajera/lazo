@@ -20,7 +20,7 @@ curl -X POST http://localhost:18800/perfil -H 'Content-Type: application/json' \
   -d '{"nombre":"Ana Ejemplo","discapacidad":"visual"}'
 # → {"perfil":{…},"token":"lzo_…"}   (el token se muestra una sola vez; en disco solo queda su huella)
 ```
-El servidor pertenece a **una persona**: `POST /perfil` solo funciona la primera vez. Después, `POST /circulo/invitacion`
+Un servidor admite **varias personas, cada una en su propio hogar aislado** (por defecto hasta 200; `maxHogares` en `createApp`; con 1 el servidor es de una sola persona y `POST /perfil` solo funciona la primera vez; más de 30 altas por hora dan 429). Cada token pertenece a un hogar y nunca ve datos de otro. `POST /circulo/invitacion`
 da un código de 6 dígitos (24 h, un solo uso) para que un cuidador se una con `POST /circulo/unirse` y reciba un token
 de **solo lectura**.
 

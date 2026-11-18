@@ -103,6 +103,16 @@ pub async fn link_device(cfg: State<'_, Mutex<Config>>, code: String, name: Stri
     secrets::set_token(&token).map_err(|e| ApiError::new(ApiErrorKind::Http, None, e))
 }
 
+/// Crea el perfil de una persona nueva en el servidor y guarda su token en Credenciales de Windows.
+#[tauri::command]
+pub async fn create_profile(cfg: State<'_, Mutex<Config>>, name: String, disability: String) -> Result<(), ApiError> {
+    let url = join_url(&base_url(&cfg), "/perfil");
+    let body = serde_json::json!({ "nombre": name.trim(), "discapacidad": disability });
+    let res = client()?.post(url).json(&body).send().await.map_err(transport_error)?;
+    let token = token_from_body(&finish(res).await?)?;
+    secrets::set_token(&token).map_err(|e| ApiError::new(ApiErrorKind::Http, None, e))
+}
+
 /// Guarda el token en Credenciales de Windows (nunca se devuelve a JS).
 #[tauri::command]
 pub fn set_token(token: String) -> Result<(), String> {

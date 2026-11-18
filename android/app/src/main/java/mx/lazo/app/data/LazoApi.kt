@@ -10,6 +10,9 @@ import java.net.URL
 /** Error de la API con un mensaje que se le puede mostrar a la persona tal cual. */
 class ApiException(message: String, val codigo: Int = 0) : IOException(message)
 
+/** Servidor de Lazo ya montado: la persona no tiene que escribir ninguna dirección. */
+const val SERVIDOR_PREDETERMINADO = "https://optiplex3090.tailcf0c15.ts.net/lazo"
+
 /** «192.168.1.5:18800» → «http://192.168.1.5:18800». null si no parece una dirección. */
 fun normalizarUrl(entrada: String): String? {
     var s = entrada.trim()

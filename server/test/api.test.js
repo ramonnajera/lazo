@@ -9,10 +9,10 @@ const { createApp } = require('../src/app');
 const FIXTURE = fs.readFileSync(path.join(__dirname, 'fixtures', 'convocatorias.html'), 'utf8');
 
 /** Servidor de prueba con reloj que se puede mover. `clock.set('2026-11-18T14:00:00Z')` (UTC; local = UTC-6). */
-async function arrancar({ dataFile = null, html = FIXTURE } = {}) {
+async function arrancar({ dataFile = null, html = FIXTURE, maxHogares } = {}) {
   const clock = { t: new Date('2026-11-18T14:00:00Z') }; // 08:00 en Chihuahua
   clock.set = (iso) => { clock.t = new Date(iso); };
-  const app = createApp({ dataFile, now: () => new Date(clock.t), fetchHtml: async () => html, convUrl: 'https://ejemplo.test/convocatorias' });
+  const app = createApp({ dataFile, now: () => new Date(clock.t), fetchHtml: async () => html, convUrl: 'https://ejemplo.test/convocatorias', ...(maxHogares ? { maxHogares } : {}) });
   const srv = http.createServer(app.handler);
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`;
@@ -29,14 +29,15 @@ async function conPersona(opts) {
   const s = await arrancar(opts);
   const r = await s.call('POST', '/perfil', { body: { nombre: 'Ana Ejemplo', discapacidad: 'visual' } });
   s.token = r.body.token;
+  s.hogar = () => Object.values(s.app.store.data.hogares)[0]; // datos del primer hogar (para revisar el estado interno)
   s.p = (m, p, body) => s.call(m, p, { token: s.token, body });
   return s;
 }
 
-test('primer arranque: /health sin configurar, /perfil crea la persona una sola vez', async () => {
-  const s = await arrancar();
+test('servidor de una sola persona (maxHogares = 1): /health sin configurar y /perfil solo funciona una vez', async () => {
+  const s = await arrancar({ maxHogares: 1 });
   try {
-    assert.deepEqual((await s.call('GET', '/health')).body, { ok: true, version: '1.0.0', configurado: false });
+    assert.deepEqual((await s.call('GET', '/health')).body, { ok: true, version: '1.0.0', configurado: false, abierto: true });
     const mal = await s.call('POST', '/perfil', { body: { discapacidad: 'visual' } });
     assert.equal(mal.status, 400);
     assert.match(mal.body.error, /nombre/);
@@ -47,7 +48,7 @@ test('primer arranque: /health sin configurar, /perfil crea la persona una sola 
     assert.deepEqual(ok.body.perfil.preferencias, { textoGrande: true, altoContraste: false, voz: true });
     assert.equal(ok.body.perfil.tolerancia, 30);
     assert.equal((await s.call('POST', '/perfil', { body: { nombre: 'Otra' } })).status, 409);
-    assert.equal((await s.call('GET', '/health')).body.configurado, true);
+    assert.deepEqual((await s.call('GET', '/health')).body, { ok: true, version: '1.0.0', configurado: true, abierto: false });
   } finally { s.close(); }
 });
 
@@ -103,7 +104,7 @@ test('medicamentos: validación, inicio por omisión hoy, edición y borrado (co
     assert.equal((await s.p('PATCH', '/medicamentos/aaaaaaaaaa', { dosis: 'x' })).status, 404);
     await s.p('POST', '/tomas', { medicamentoId: med.id, fecha: '2026-11-18', hora: '09:00', estado: 'tomada' });
     assert.equal((await s.p('DELETE', `/medicamentos/${med.id}`)).status, 200);
-    assert.equal(s.app.store.data.tomas.length, 0);
+    assert.equal(s.hogar().tomas.length, 0);
     assert.deepEqual((await s.p('GET', '/medicamentos')).body.medicamentos, []);
   } finally { s.close(); }
 });
@@ -342,7 +343,7 @@ test('/voz: confirmar, posponer, omitir y consultar con frases naturales', async
     assert.equal(t.body.reply, 'Listo. Registré Losartán, 50 mg como tomada.');
     assert.equal(t.body.accion.hecho, true);
     assert.equal((await s.p('GET', '/tomas')).body.tomas[0].estado, 'tomada');
-    assert.equal(s.app.store.data.medicamentos[0].existencias, 4); // la orden de voz también descuenta existencias
+    assert.equal(s.hogar().medicamentos[0].existencias, 4); // la orden de voz también descuenta existencias
 
     const o = await s.p('POST', '/voz', { texto: 'no la tomaré' }); // ahora la del 20:00
     assert.equal(o.body.reply, 'De acuerdo. Marqué Losartán como omitida.');
@@ -430,4 +431,129 @@ test('dispositivos: se listan y se puede quitar el acceso de uno perdido (nunca 
     assert.equal((await s.p('DELETE', '/dispositivos/aaaaaaaaaa')).status, 404);
     assert.equal((await s.p('GET', '/dispositivos')).body.dispositivos.length, 1);
   } finally { s.close(); }
+});
+
+// ---------------------------------------------------------------- varios hogares en un mismo servidor
+
+/** Un servidor con dos personas distintas, cada una con su token. */
+async function dosHogares() {
+  const s = await arrancar();
+  const a = (await s.call('POST', '/perfil', { body: { nombre: 'Ana Ejemplo', discapacidad: 'visual' } })).body.token;
+  const b = (await s.call('POST', '/perfil', { body: { nombre: 'Beto Ejemplo', discapacidad: 'motriz' } })).body.token;
+  s.A = (m, p, body) => s.call(m, p, { token: a, body });
+  s.B = (m, p, body) => s.call(m, p, { token: b, body });
+  s.tokenA = a;
+  s.tokenB = b;
+  return s;
+}
+
+test('cada persona tiene su propio espacio: nadie ve ni toca los datos de otra', async () => {
+  const s = await dosHogares();
+  try {
+    assert.equal(Object.keys(s.app.store.data.hogares).length, 2);
+    const medA = (await s.A('POST', '/medicamentos', { nombre: 'Losartán', horarios: ['08:00'] })).body.medicamento;
+    await s.A('POST', '/citas', { especialista: 'Oftalmología de Ana', fecha: '2026-11-25', hora: '10:00' });
+    await s.A('POST', '/mediciones', { tipo: 'glucosa', valor: { mgdl: 250 } });
+    // B no ve nada de A
+    assert.deepEqual((await s.B('GET', '/medicamentos')).body.medicamentos, []);
+    assert.deepEqual((await s.B('GET', '/citas')).body.citas, []);
+    assert.deepEqual((await s.B('GET', '/mediciones')).body.mediciones, []);
+    assert.deepEqual((await s.B('GET', '/alertas')).body.alertas.filter((x) => x.tipo !== 'convocatoria-nueva'), []);
+    assert.equal((await s.B('GET', '/perfil')).body.perfil.nombre, 'Beto Ejemplo');
+    // B no puede tocar el medicamento de A, aunque conozca su id
+    assert.equal((await s.B('PATCH', `/medicamentos/${medA.id}`, { dosis: 'x' })).status, 404);
+    assert.equal((await s.B('DELETE', `/medicamentos/${medA.id}`)).status, 404);
+    assert.equal((await s.B('POST', '/tomas', { medicamentoId: medA.id, fecha: '2026-11-18', hora: '08:00', estado: 'tomada' })).status, 404);
+    // y A sigue intacta
+    assert.equal((await s.A('GET', '/medicamentos')).body.medicamentos.length, 1);
+    assert.equal((await s.A('GET', '/perfil')).body.perfil.nombre, 'Ana Ejemplo');
+  } finally { s.close(); }
+});
+
+test('los cuidadores y los dispositivos pertenecen al hogar que los invitó', async () => {
+  const s = await dosHogares();
+  try {
+    await s.A('POST', '/citas', { especialista: 'Solo de Ana', fecha: '2026-11-25', hora: '10:00' });
+    const cod = (await s.A('POST', '/circulo/invitacion')).body.codigo;
+    const u = await s.call('POST', '/circulo/unirse', { body: { codigo: cod, nombre: 'Luis' } });
+    assert.equal(u.body.persona.nombre, 'Ana Ejemplo');
+    const ct = u.body.token;
+    assert.equal((await s.call('GET', '/circulo/resumen', { token: ct })).body.persona.nombre, 'Ana Ejemplo');
+    assert.equal((await s.call('GET', '/citas', { token: ct })).body.citas[0].especialista, 'Solo de Ana');
+    // la lista de cuidadores de B no incluye a Luis, y B no puede quitarle el acceso
+    assert.deepEqual((await s.B('GET', '/circulo')).body.cuidadores, []);
+    const idLuis = (await s.A('GET', '/circulo')).body.cuidadores[0].id;
+    assert.equal((await s.B('DELETE', `/circulo/${idLuis}`)).status, 404);
+    assert.equal((await s.call('GET', '/citas', { token: ct })).status, 200); // sigue con acceso
+    // un dispositivo vinculado con un código de B entra al hogar de B, no al de A
+    const codB = (await s.B('POST', '/perfil/vincular')).body.codigo;
+    const t2 = (await s.call('POST', '/perfil/vincular/unirse', { body: { codigo: codB, nombre: 'Tablet de Beto' } })).body.token;
+    assert.equal((await s.call('GET', '/perfil', { token: t2 })).body.perfil.nombre, 'Beto Ejemplo');
+    assert.deepEqual((await s.call('GET', '/dispositivos', { token: t2 })).body.dispositivos.map((d) => d.nombre).sort(), ['Beto Ejemplo', 'Tablet de Beto']);
+    assert.equal((await s.A('GET', '/dispositivos')).body.dispositivos.length, 1);
+  } finally { s.close(); }
+});
+
+test('los códigos de invitación nunca se repiten entre hogares', async () => {
+  const s = await dosHogares();
+  try {
+    const codigos = new Set();
+    for (let i = 0; i < 4; i++) {
+      codigos.add((await s.A('POST', '/circulo/invitacion')).body.codigo);
+      codigos.add((await s.B('POST', '/circulo/invitacion')).body.codigo);
+    }
+    assert.equal(codigos.size, 8);
+  } finally { s.close(); }
+});
+
+test('las convocatorias son compartidas: una lectura sirve a todos los hogares', async () => {
+  const s = await dosHogares();
+  try {
+    assert.equal((await s.A('POST', '/convocatorias/actualizar')).body.total, 18);
+    assert.equal((await s.B('GET', '/convocatorias')).body.items.length, 18);
+  } finally { s.close(); }
+});
+
+test('tope de hogares: más allá del límite el servidor responde 503 (y con límite 1, 409)', async () => {
+  const s = await arrancar({ maxHogares: 2 });
+  try {
+    assert.equal((await s.call('POST', '/perfil', { body: { nombre: 'A' } })).status, 201);
+    assert.equal((await s.call('POST', '/perfil', { body: { nombre: 'B' } })).status, 201);
+    const r = await s.call('POST', '/perfil', { body: { nombre: 'C' } });
+    assert.equal(r.status, 503);
+    assert.match(r.body.error, /no admite más personas/);
+    assert.equal((await s.call('GET', '/health')).body.abierto, false);
+  } finally { s.close(); }
+});
+
+test('anti-abuso: no se pueden crear más de 30 hogares por hora, y se libera pasada la hora', async () => {
+  const s = await arrancar();
+  try {
+    for (let i = 0; i < 30; i++) assert.equal((await s.call('POST', '/perfil', { body: { nombre: `P${i}` } })).status, 201);
+    assert.equal((await s.call('POST', '/perfil', { body: { nombre: 'P31' } })).status, 429);
+    s.clock.set('2026-11-18T15:01:00Z');
+    assert.equal((await s.call('POST', '/perfil', { body: { nombre: 'P32' } })).status, 201);
+  } finally { s.close(); }
+});
+
+test('un archivo de datos de la versión anterior (una sola persona) se migra sin perder nada', async () => {
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'lazo-')), 'datos.json');
+  const viejo = {
+    perfil: { nombre: 'Ana Ejemplo', discapacidad: 'visual', tolerancia: 30, preferencias: { textoGrande: true, altoContraste: false, voz: true }, creado: '2026-11-01' },
+    tokens: [{ id: 'aaaaaaaaaa', hash: require('crypto').createHash('sha256').update('lzo_viejo').digest('hex'), rol: 'persona', nombre: 'Ana Ejemplo', creado: '2026-11-01' }],
+    invitaciones: [], medicamentos: [{ id: 'bbbbbbbbbb', nombre: 'Losartán', dosis: '50 mg', instrucciones: '', horarios: ['08:00'], inicio: '2026-11-01' }],
+    tomas: [], citas: [{ id: 'cccccccccc', especialista: 'Oftalmología', motivo: '', lugar: '', notas: '', transporte: '', fecha: '2026-11-25', hora: '10:00' }], mediciones: [], vistos: {},
+    convocatorias: { items: [], nuevas: [], ultimaLectura: null, error: null, baseline: false },
+  };
+  fs.writeFileSync(f, JSON.stringify(viejo));
+  const s = await arrancar({ dataFile: f });
+  try {
+    assert.equal((await s.call('GET', '/perfil', { token: 'lzo_viejo' })).body.perfil.nombre, 'Ana Ejemplo');
+    assert.equal((await s.call('GET', '/medicamentos', { token: 'lzo_viejo' })).body.medicamentos[0].nombre, 'Losartán');
+    assert.equal((await s.call('GET', '/citas', { token: 'lzo_viejo' })).body.citas[0].especialista, 'Oftalmología');
+    const nuevo = await s.call('POST', '/perfil', { body: { nombre: 'Otra persona' } }); // y ahora admite más personas
+    assert.equal(nuevo.status, 201);
+    assert.deepEqual((await s.call('GET', '/citas', { token: nuevo.body.token })).body.citas, []);
+  } finally { s.close(); }
+  assert.equal(JSON.parse(fs.readFileSync(f, 'utf8')).version, 2);
 });

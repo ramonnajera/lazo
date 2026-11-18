@@ -46,6 +46,7 @@ pub fn run() {
             api::api_request,
             api::set_token,
             api::link_device,
+            api::create_profile,
             api::has_token,
             window::set_island_region,
             window::open_settings,

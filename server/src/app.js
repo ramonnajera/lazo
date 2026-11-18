@@ -1,7 +1,7 @@
 // app.js — API HTTP de Lazo. Sin dependencias: solo el módulo `http` de Node.
 // `createApp` recibe todo lo externo (archivo de datos, reloj, descarga de convocatorias) para poder probarlo entero.
 
-const { Store, newId, hashToken, newToken } = require('./store');
+const { Store, newId, hashToken, newToken, hogarVacio } = require('./store');
 const T = require('./time');
 const S = require('./schedule');
 const M = require('./mediciones');
@@ -116,100 +116,148 @@ function validarCita(b, previo) {
 
 // ---------- aplicación ----------
 
-function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.descargar, convUrl = C.PAGE_URL } = {}) {
+function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.descargar, convUrl = C.PAGE_URL, maxHogares = 200 } = {}) {
   const store = new Store(dataFile);
   const ahora = () => T.local(now());
   let ultimaActualizacionConv = 0;
   const intentosUnirse = []; // marcas de tiempo de intentos fallidos (límite contra adivinar códigos)
+  const altasRecientes = []; // marcas de tiempo de los hogares creados en la última hora (límite anti-abuso)
+  const MAX_ALTAS_POR_HORA = 30;
 
   const rutas = [];
   const ruta = (method, re, acceso, fn) => rutas.push({ method, re, acceso, fn });
 
-  const idDeToken = (d, token) => {
-    const h = hashToken(token);
-    return d.tokens.find((t) => t.hash === h) || null;
+  const hogares = () => Object.values(store.data.hogares);
+
+  /** Busca el token en todos los hogares. Devuelve el hogar al que pertenece y la ficha del token. */
+  const buscarToken = (token) => {
+    const hash = hashToken(token);
+    for (const h of hogares()) {
+      const tk = h.tokens.find((t) => t.hash === hash);
+      if (tk) return { h, tk };
+    }
+    return null;
+  };
+
+  /** Vista de solo lectura de un hogar: sus datos más las convocatorias, que son comunes a todos. */
+  const vista = (h) => Object.assign(Object.create(h), { convocatorias: store.data.convocatorias });
+
+  /** Cambia los datos de un hogar y guarda el archivo. */
+  const mutar = (h, fn) => store.mutate(() => fn(h));
+
+  /** Busca una invitación vigente (de cuidador o de dispositivo) en cualquier hogar. */
+  const buscarInvitacion = (codigo, tipo, t) => {
+    for (const h of hogares()) {
+      const inv = h.invitaciones.find((i) => i.codigo === codigo && !i.usada && i.expira > t && (i.tipo || 'cuidador') === tipo);
+      if (inv) return { h, inv };
+    }
+    return null;
+  };
+
+  /** Genera un código de 6 dígitos que no se repite en ninguna invitación vigente de ningún hogar. */
+  const codigoNuevo = (t) => {
+    const usados = new Set(hogares().flatMap((h) => h.invitaciones.filter((i) => !i.usada && i.expira > t).map((i) => i.codigo)));
+    for (;;) {
+      const c = String(Math.floor(100000 + Math.random() * 900000));
+      if (!usados.has(c)) return c;
+    }
+  };
+
+  const limitarIntentos = (t) => {
+    while (intentosUnirse.length && t - intentosUnirse[0] > 15 * 60000) intentosUnirse.shift();
+    if (intentosUnirse.length >= 8) throw new HttpError(429, 'demasiados intentos: espera unos minutos');
   };
 
   // ----- públicas -----
-  ruta('GET', /^\/health$/, 'publica', ({ d }) => ({ ok: true, version: VERSION, configurado: !!d.perfil }));
+  ruta('GET', /^\/health$/, 'publica', () => {
+    const n = hogares().length;
+    return { ok: true, version: VERSION, configurado: n > 0, abierto: n < maxHogares };
+  });
 
-  ruta('POST', /^\/perfil$/, 'publica', ({ d, body, res }) => {
-    if (d.perfil) throw new HttpError(409, 'ya hay un perfil: este servidor pertenece a una persona');
+  ruta('POST', /^\/perfil$/, 'publica', ({ body, res }) => {
+    const n = hogares().length;
+    if (maxHogares === 1 && n >= 1) throw new HttpError(409, 'ya hay un perfil: este servidor pertenece a una persona');
+    if (n >= maxHogares) throw new HttpError(503, 'este servidor no admite más personas');
+    const t = now().getTime();
+    while (altasRecientes.length && t - altasRecientes[0] > 3600000) altasRecientes.shift();
+    if (altasRecientes.length >= MAX_ALTAS_POR_HORA) throw new HttpError(429, 'se están creando demasiados perfiles: intenta más tarde');
     const perfil = validarPerfil(body);
     const token = newToken();
+    const h = { ...hogarVacio(), perfil: { ...perfil, creado: ahora().date } };
+    h.tokens.push({ id: newId(), hash: hashToken(token), rol: 'persona', nombre: perfil.nombre, creado: ahora().date });
     store.mutate((x) => {
-      x.perfil = { ...perfil, creado: ahora().date };
-      x.tokens.push({ id: newId(), hash: hashToken(token), rol: 'persona', nombre: perfil.nombre, creado: ahora().date });
+      x.hogares[newId()] = h;
     });
+    altasRecientes.push(t);
     res.status = 201;
-    return { perfil: store.data.perfil, token };
+    return { perfil: h.perfil, token };
   });
 
   ruta('POST', /^\/circulo\/unirse$/, 'publica', ({ body, res }) => {
     const t = now().getTime();
-    while (intentosUnirse.length && t - intentosUnirse[0] > 15 * 60000) intentosUnirse.shift();
-    if (intentosUnirse.length >= 8) throw new HttpError(429, 'demasiados intentos: espera unos minutos');
+    limitarIntentos(t);
     const codigo = texto(body.codigo, 'codigo', { max: 12, obligatorio: true });
     const nombre = texto(body.nombre, 'nombre', { max: 60, obligatorio: true });
     const parentesco = texto(body.parentesco, 'parentesco', { max: 40 });
-    const inv = store.data.invitaciones.find((i) => i.codigo === codigo && !i.usada && i.expira > t && i.tipo !== 'dispositivo');
-    if (!inv) {
+    const hallada = buscarInvitacion(codigo, 'cuidador', t);
+    if (!hallada) {
       intentosUnirse.push(t);
       throw new HttpError(404, 'el código no existe, ya se usó o venció');
     }
+    const { h, inv } = hallada;
     const token = newToken();
-    store.mutate((x) => {
-      x.invitaciones = x.invitaciones.filter((i) => i !== x.invitaciones.find((j) => j.codigo === codigo));
+    mutar(h, (x) => {
+      x.invitaciones = x.invitaciones.filter((i) => i !== inv);
       x.tokens.push({ id: newId(), hash: hashToken(token), rol: 'cuidador', nombre, parentesco, creado: ahora().date });
     });
     res.status = 201;
-    return { token, persona: { nombre: store.data.perfil.nombre } };
+    return { token, persona: { nombre: h.perfil.nombre } };
   });
 
   // Vincular otro dispositivo de la misma persona (teléfono + computadora): código de 6 dígitos, 24 h, un solo uso.
-  ruta('POST', /^\/perfil\/vincular\/unirse$/, 'publica', ({ d, body, res }) => {
+  ruta('POST', /^\/perfil\/vincular\/unirse$/, 'publica', ({ body, res }) => {
     const t = now().getTime();
-    while (intentosUnirse.length && t - intentosUnirse[0] > 15 * 60000) intentosUnirse.shift();
-    if (intentosUnirse.length >= 8) throw new HttpError(429, 'demasiados intentos: espera unos minutos');
+    limitarIntentos(t);
     const codigo = texto(body.codigo, 'codigo', { max: 12, obligatorio: true });
     const nombre = texto(body.nombre, 'nombre', { max: 60 }) || 'Otro dispositivo';
-    const inv = d.invitaciones.find((i) => i.codigo === codigo && !i.usada && i.expira > t && i.tipo === 'dispositivo');
-    if (!inv) {
+    const hallada = buscarInvitacion(codigo, 'dispositivo', t);
+    if (!hallada) {
       intentosUnirse.push(t);
       throw new HttpError(404, 'el código no existe, ya se usó o venció');
     }
+    const { h, inv } = hallada;
     const token = newToken();
-    store.mutate((x) => {
+    mutar(h, (x) => {
       x.invitaciones = x.invitaciones.filter((i) => i !== inv);
       x.tokens.push({ id: newId(), hash: hashToken(token), rol: 'persona', nombre, creado: ahora().date });
     });
     res.status = 201;
-    return { token, perfil: store.data.perfil };
+    return { token, perfil: h.perfil };
   });
 
   // ----- persona o cuidador (lectura) -----
-  ruta('GET', /^\/perfil$/, 'cualquiera', ({ d }) => ({ perfil: d.perfil }));
-  ruta('GET', /^\/medicamentos$/, 'cualquiera', ({ d }) => ({ medicamentos: [...d.medicamentos].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')) }));
+  ruta('GET', /^\/perfil$/, 'cualquiera', ({ h, d }) => ({ perfil: d.perfil }));
+  ruta('GET', /^\/medicamentos$/, 'cualquiera', ({ h, d }) => ({ medicamentos: [...d.medicamentos].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')) }));
 
-  ruta('GET', /^\/tomas$/, 'cualquiera', ({ d, query }) => {
+  ruta('GET', /^\/tomas$/, 'cualquiera', ({ h, d, query }) => {
     const n = ahora();
     const fecha = query.get('fecha') || n.date;
     if (!T.validDate(fecha)) throw bad('fecha debe ser YYYY-MM-DD');
     return { fecha, ahora: { fecha: n.date, hora: n.time }, tomas: S.dayView(d, fecha, n, (d.perfil && d.perfil.tolerancia) || S.TOLERANCIA_MIN) };
   });
 
-  ruta('GET', /^\/proxima$/, 'cualquiera', ({ d }) => {
+  ruta('GET', /^\/proxima$/, 'cualquiera', ({ h, d }) => {
     const n = ahora();
     return { ahora: { fecha: n.date, hora: n.time }, dosis: S.nextDose(d, n, (d.perfil && d.perfil.tolerancia) || S.TOLERANCIA_MIN) };
   });
 
-  ruta('GET', /^\/citas$/, 'cualquiera', ({ d, query }) => {
+  ruta('GET', /^\/citas$/, 'cualquiera', ({ h, d, query }) => {
     const desde = query.get('desde') || (query.get('todas') ? '0000-01-01' : ahora().date);
     if (!T.validDate(desde) && desde !== '0000-01-01') throw bad('desde debe ser YYYY-MM-DD');
     return { citas: d.citas.filter((c) => c.fecha >= desde).sort((a, b) => T.absMin(a.fecha, a.hora) - T.absMin(b.fecha, b.hora)) };
   });
 
-  ruta('GET', /^\/mediciones$/, 'cualquiera', ({ d, query }) => {
+  ruta('GET', /^\/mediciones$/, 'cualquiera', ({ h, d, query }) => {
     const tipo = query.get('tipo');
     if (tipo && !M.TIPOS.includes(tipo)) throw bad(`tipo debe ser uno de: ${M.TIPOS.join(', ')}`);
     const dias = Number(query.get('dias') || 30);
@@ -223,11 +271,11 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
     return { mediciones: lista };
   });
 
-  ruta('GET', /^\/alertas$/, 'cualquiera', ({ d, auth }) => ({ alertas: A.compute(d, ahora(), auth.id) }));
+  ruta('GET', /^\/alertas$/, 'cualquiera', ({ h, d, auth }) => ({ alertas: A.compute(d, ahora(), auth.id) }));
 
-  ruta('POST', /^\/alertas\/([^/]+)\/visto$/, 'cualquiera', ({ auth, m }) => {
+  ruta('POST', /^\/alertas\/([^/]+)\/visto$/, 'cualquiera', ({ h, auth, m }) => {
     const id = decodeURIComponent(m[1]);
-    store.mutate((x) => {
+    mutar(h, (x) => {
       const v = x.vistos[auth.id] || (x.vistos[auth.id] = []);
       if (!v.includes(id)) v.push(id);
       if (v.length > 500) v.splice(0, v.length - 500);
@@ -235,43 +283,43 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
     return { ok: true };
   });
 
-  ruta('GET', /^\/circulo\/resumen$/, 'cualquiera', ({ d, auth }) => R.resumen(d, ahora(), auth.id));
+  ruta('GET', /^\/circulo\/resumen$/, 'cualquiera', ({ h, d, auth }) => R.resumen(d, ahora(), auth.id));
 
-  ruta('GET', /^\/convocatorias$/, 'cualquiera', ({ d, query }) => {
+  ruta('GET', /^\/convocatorias$/, 'cualquiera', ({ h, d, query }) => {
     const c = d.convocatorias;
     const soloDisc = query.get('discapacidad') === '1';
     return { items: c.items.filter((i) => !soloDisc || i.discapacidad), ultimaLectura: c.ultimaLectura, error: c.error || null, fuente: convUrl, nuevas: (c.nuevas || []).map((n) => n.id) };
   });
 
   // ----- solo la persona (escritura y administración) -----
-  ruta('PATCH', /^\/perfil$/, 'persona', ({ d, body }) => {
+  ruta('PATCH', /^\/perfil$/, 'persona', ({ h, d, body }) => {
     const perfil = validarPerfil(body, d.perfil);
-    store.mutate((x) => {
+    mutar(h, (x) => {
       x.perfil = perfil;
     });
     return { perfil };
   });
 
-  ruta('POST', /^\/medicamentos$/, 'persona', ({ body, res }) => {
+  ruta('POST', /^\/medicamentos$/, 'persona', ({ h, body, res }) => {
     const m = { id: newId(), ...validarMedicamento(body, null, ahora().date), creado: ahora().date };
-    store.mutate((x) => x.medicamentos.push(m));
+    mutar(h, (x) => x.medicamentos.push(m));
     res.status = 201;
     return { medicamento: m };
   });
 
-  ruta('PATCH', /^\/medicamentos\/([0-9a-f]{10})$/, 'persona', ({ d, body, m }) => {
+  ruta('PATCH', /^\/medicamentos\/([0-9a-f]{10})$/, 'persona', ({ h, d, body, m }) => {
     const previo = d.medicamentos.find((x) => x.id === m[1]);
     if (!previo) throw new HttpError(404, 'medicamento no encontrado');
     const nuevo = validarMedicamento(body, previo, ahora().date);
-    store.mutate((x) => {
+    mutar(h, (x) => {
       x.medicamentos[x.medicamentos.indexOf(previo)] = nuevo;
     });
     return { medicamento: nuevo };
   });
 
-  ruta('DELETE', /^\/medicamentos\/([0-9a-f]{10})$/, 'persona', ({ d, m }) => {
+  ruta('DELETE', /^\/medicamentos\/([0-9a-f]{10})$/, 'persona', ({ h, d, m }) => {
     if (!d.medicamentos.some((x) => x.id === m[1])) throw new HttpError(404, 'medicamento no encontrado');
-    store.mutate((x) => {
+    mutar(h, (x) => {
       x.medicamentos = x.medicamentos.filter((y) => y.id !== m[1]);
       x.tomas = x.tomas.filter((t) => t.medicamentoId !== m[1]);
     });
@@ -279,7 +327,7 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
   });
 
   /** Registra una toma (tomada, omitida, pospuesta o deshacer). La usan POST /tomas y las órdenes por voz. */
-  function aplicarToma(d, body) {
+  function aplicarToma(h, d, body) {
     const n = ahora();
     const med = d.medicamentos.find((x) => x.id === body.medicamentoId);
     if (!med) throw new HttpError(404, 'medicamento no encontrado');
@@ -293,7 +341,7 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
       if (!Number.isInteger(min) || min < 5 || min > 180) throw bad('minutos debe ser un entero de 5 a 180');
       hasta = T.fromAbsMin(T.absMin(n.date, n.time) + min);
     }
-    store.mutate((x) => {
+    mutar(h, (x) => {
       const i = x.tomas.findIndex((t) => t.medicamentoId === med.id && t.fecha === body.fecha && t.hora === body.hora);
       const previa = i >= 0 ? x.tomas[i] : null;
       if (i >= 0) x.tomas.splice(i, 1);
@@ -308,14 +356,14 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
         if (!ahoraTomada && antes) medX.existencias += 1;
       }
     });
-    const vista = S.dayView(store.data, body.fecha, n, (store.data.perfil && store.data.perfil.tolerancia) || S.TOLERANCIA_MIN).find((x) => x.medicamentoId === med.id && x.hora === body.hora);
-    return { toma: vista, existencias: store.data.medicamentos.find((y) => y.id === med.id).existencias ?? null };
+    const vista = S.dayView(d, body.fecha, n, (d.perfil && d.perfil.tolerancia) || S.TOLERANCIA_MIN).find((x) => x.medicamentoId === med.id && x.hora === body.hora);
+    return { toma: vista, existencias: d.medicamentos.find((y) => y.id === med.id).existencias ?? null };
   }
 
-  ruta('POST', /^\/tomas$/, 'persona', ({ d, body }) => aplicarToma(d, body));
+  ruta('POST', /^\/tomas$/, 'persona', ({ h, d, body }) => aplicarToma(h, d, body));
 
   // Órdenes en español, por voz o por texto (la isla de Windows y el chat las envían aquí).
-  ruta('POST', /^\/voz$/, 'persona', ({ d, body }) => {
+  ruta('POST', /^\/voz$/, 'persona', ({ h, d, body }) => {
     const texto = typeof body.texto === 'string' ? body.texto.trim() : '';
     if (!texto) throw bad('texto es obligatorio');
     if (texto.length > 300) throw bad('texto admite hasta 300 caracteres');
@@ -324,7 +372,7 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
     const hoy = S.dayView(d, n.date, n, tolerancia);
     const dosis = hoy.find((x) => X.requiereAtencion(x.estado)) || hoy.find((x) => x.estado === 'pendiente' || x.estado === 'pospuesta');
     const c = interpretar(texto);
-    const registrar = (estado, minutos) => aplicarToma(d, { medicamentoId: dosis.medicamentoId, fecha: dosis.fecha, hora: dosis.hora, estado, ...(minutos ? { minutos } : {}) });
+    const registrar = (estado, minutos) => aplicarToma(h, d, { medicamentoId: dosis.medicamentoId, fecha: dosis.fecha, hora: dosis.hora, estado, ...(minutos ? { minutos } : {}) });
     const sinToma = { reply: 'No tienes ninguna toma pendiente.', accion: { tipo: c.tipo, hecho: false } };
     switch (c.tipo) {
       case 'tomada':
@@ -359,32 +407,32 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
     }
   });
 
-  ruta('POST', /^\/citas$/, 'persona', ({ body, res }) => {
+  ruta('POST', /^\/citas$/, 'persona', ({ h, body, res }) => {
     const c = { id: newId(), ...validarCita(body, null) };
-    store.mutate((x) => x.citas.push(c));
+    mutar(h, (x) => x.citas.push(c));
     res.status = 201;
     return { cita: c };
   });
 
-  ruta('PATCH', /^\/citas\/([0-9a-f]{10})$/, 'persona', ({ d, body, m }) => {
+  ruta('PATCH', /^\/citas\/([0-9a-f]{10})$/, 'persona', ({ h, d, body, m }) => {
     const previa = d.citas.find((x) => x.id === m[1]);
     if (!previa) throw new HttpError(404, 'cita no encontrada');
     const nueva = validarCita(body, previa);
-    store.mutate((x) => {
+    mutar(h, (x) => {
       x.citas[x.citas.indexOf(previa)] = nueva;
     });
     return { cita: nueva };
   });
 
-  ruta('DELETE', /^\/citas\/([0-9a-f]{10})$/, 'persona', ({ d, m }) => {
+  ruta('DELETE', /^\/citas\/([0-9a-f]{10})$/, 'persona', ({ h, d, m }) => {
     if (!d.citas.some((x) => x.id === m[1])) throw new HttpError(404, 'cita no encontrada');
-    store.mutate((x) => {
+    mutar(h, (x) => {
       x.citas = x.citas.filter((y) => y.id !== m[1]);
     });
     return { ok: true };
   });
 
-  ruta('POST', /^\/mediciones$/, 'persona', ({ d, body, res }) => {
+  ruta('POST', /^\/mediciones$/, 'persona', ({ h, d, body, res }) => {
     const v = M.validar(body.tipo, body.valor);
     if (!v.ok) throw bad(v.error);
     const n = ahora();
@@ -392,23 +440,23 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
     const hora = body.hora === undefined ? n.time : body.hora;
     if (!T.validDate(fecha) || !T.validTime(hora)) throw bad('fecha (YYYY-MM-DD) u hora (HH:MM) inválida');
     const med = { id: newId(), tipo: body.tipo, valor: v.valor, nota: texto(body.nota, 'nota', { max: 200 }), fecha, hora };
-    store.mutate((x) => x.mediciones.push(med));
+    mutar(h, (x) => x.mediciones.push(med));
     res.status = 201;
     return { medicion: { ...med, texto: M.describir(med.tipo, med.valor) }, aviso: M.evaluar(med.tipo, med.valor, (d.perfil && d.perfil.rangos) || {}) };
   });
 
-  ruta('DELETE', /^\/mediciones\/([0-9a-f]{10})$/, 'persona', ({ d, m }) => {
+  ruta('DELETE', /^\/mediciones\/([0-9a-f]{10})$/, 'persona', ({ h, d, m }) => {
     if (!d.mediciones.some((x) => x.id === m[1])) throw new HttpError(404, 'medición no encontrada');
-    store.mutate((x) => {
+    mutar(h, (x) => {
       x.mediciones = x.mediciones.filter((y) => y.id !== m[1]);
     });
     return { ok: true };
   });
 
-  ruta('POST', /^\/circulo\/invitacion$/, 'persona', ({ res }) => {
+  ruta('POST', /^\/circulo\/invitacion$/, 'persona', ({ h, res }) => {
     const t = now().getTime();
-    const codigo = String(Math.floor(100000 + Math.random() * 900000));
-    store.mutate((x) => {
+    const codigo = codigoNuevo(t);
+    mutar(h, (x) => {
       x.invitaciones = x.invitaciones.filter((i) => !i.usada && i.expira > t).slice(-4); // máximo 5 códigos vigentes
       x.invitaciones.push({ codigo, expira: t + 24 * 3600 * 1000, usada: false });
     });
@@ -416,10 +464,10 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
     return { codigo, expira: new Date(t + 24 * 3600 * 1000).toISOString() };
   });
 
-  ruta('POST', /^\/perfil\/vincular$/, 'persona', ({ res }) => {
+  ruta('POST', /^\/perfil\/vincular$/, 'persona', ({ h, res }) => {
     const t = now().getTime();
-    const codigo = String(Math.floor(100000 + Math.random() * 900000));
-    store.mutate((x) => {
+    const codigo = codigoNuevo(t);
+    mutar(h, (x) => {
       x.invitaciones = x.invitaciones.filter((i) => !i.usada && i.expira > t).slice(-4);
       x.invitaciones.push({ codigo, expira: t + 24 * 3600 * 1000, usada: false, tipo: 'dispositivo' });
     });
@@ -427,32 +475,32 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
     return { codigo, expira: new Date(t + 24 * 3600 * 1000).toISOString() };
   });
 
-  ruta('GET', /^\/dispositivos$/, 'persona', ({ d }) => ({ dispositivos: d.tokens.filter((t) => t.rol === 'persona').map(({ id, nombre, creado }) => ({ id, nombre, creado })) }));
+  ruta('GET', /^\/dispositivos$/, 'persona', ({ h, d }) => ({ dispositivos: d.tokens.filter((t) => t.rol === 'persona').map(({ id, nombre, creado }) => ({ id, nombre, creado })) }));
 
-  ruta('DELETE', /^\/dispositivos\/([0-9a-f]{10})$/, 'persona', ({ d, m, auth }) => {
+  ruta('DELETE', /^\/dispositivos\/([0-9a-f]{10})$/, 'persona', ({ h, d, m, auth }) => {
     const t = d.tokens.find((x) => x.id === m[1] && x.rol === 'persona');
     if (!t) throw new HttpError(404, 'dispositivo no encontrado');
     if (t.id === auth.id) throw bad('no puedes quitar el acceso del dispositivo que estás usando');
-    store.mutate((x) => {
+    mutar(h, (x) => {
       x.tokens = x.tokens.filter((y) => y !== t);
       delete x.vistos[t.id];
     });
     return { ok: true };
   });
 
-  ruta('GET', /^\/circulo$/, 'persona', ({ d }) => ({ cuidadores: d.tokens.filter((t) => t.rol === 'cuidador').map(({ id, nombre, parentesco, creado }) => ({ id, nombre, parentesco, creado })) }));
+  ruta('GET', /^\/circulo$/, 'persona', ({ h, d }) => ({ cuidadores: d.tokens.filter((t) => t.rol === 'cuidador').map(({ id, nombre, parentesco, creado }) => ({ id, nombre, parentesco, creado })) }));
 
-  ruta('DELETE', /^\/circulo\/([0-9a-f]{10})$/, 'persona', ({ d, m }) => {
+  ruta('DELETE', /^\/circulo\/([0-9a-f]{10})$/, 'persona', ({ h, d, m }) => {
     const t = d.tokens.find((x) => x.id === m[1] && x.rol === 'cuidador');
     if (!t) throw new HttpError(404, 'cuidador no encontrado');
-    store.mutate((x) => {
+    mutar(h, (x) => {
       x.tokens = x.tokens.filter((y) => y !== t);
       delete x.vistos[t.id];
     });
     return { ok: true };
   });
 
-  ruta('POST', /^\/convocatorias\/actualizar$/, 'persona', async ({ d }) => {
+  ruta('POST', /^\/convocatorias\/actualizar$/, 'persona', async () => {
     const t = now().getTime();
     if (t - ultimaActualizacionConv < 60000) throw new HttpError(429, 'ya se actualizó hace menos de un minuto');
     ultimaActualizacionConv = t;
@@ -492,15 +540,18 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
       const r = candidatas.find((x) => x.method === req.method);
       if (!r) throw new HttpError(405, 'método no permitido');
       let auth = null;
+      let hogar = null;
       if (r.acceso !== 'publica') {
         const h = req.headers.authorization || '';
         const tk = h.startsWith('Bearer ') ? h.slice(7).trim() : '';
-        auth = tk ? idDeToken(store.data, tk) : null;
-        if (!auth) throw new HttpError(401, 'falta el token o no es válido');
+        const hallado = tk ? buscarToken(tk) : null;
+        if (!hallado) throw new HttpError(401, 'falta el token o no es válido');
+        auth = hallado.tk;
+        hogar = hallado.h;
         if (r.acceso === 'persona' && auth.rol !== 'persona') throw new HttpError(403, 'el cuidador solo puede consultar');
       }
       const body = req.method === 'GET' || req.method === 'DELETE' ? {} : await leerCuerpo(req);
-      const ctx = { d: store.data, body, query: url.searchParams, auth, m: url.pathname.match(r.re), res: { status: 200 } };
+      const ctx = { h: hogar, d: hogar ? vista(hogar) : null, body, query: url.searchParams, auth, m: url.pathname.match(r.re), res: { status: 200 } };
       const out = await r.fn(ctx);
       send(ctx.res.status, out);
     } catch (e) {
