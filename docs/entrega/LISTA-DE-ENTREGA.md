@@ -24,7 +24,7 @@ Dudas: (614) 429-33-00, ext. 17922 y 17911. Entrega digital: formulario de regis
 
 ## Revisa antes de enviar
 - [ ] Llenaste las **marcas amarillas** del ensayo y la carta (nombre, domicilio, contacto, fecha, firma).
-- [ ] Verifica las **cifras citadas** en la sección «Evidencias» contra sus fuentes (INEGI/Plan Estatal de Desarrollo, CNDH, OMS): se citan como las reportan sus fuentes secundarias. Confirma la que uses en el video.
+- [ ] Verifica las **cifras citadas** en la sección «Evidencias» contra sus fuentes (INEGI/Plan Estatal de Desarrollo, CNDH, OMS; y las nuevas de autismo: OMS «1 de cada 100», estudio de León, Guanajuato de Fombonne y colaboradores 2016 «1 de cada 115», y la Ley General para la Atención y Protección a Personas con la Condición del Espectro Autista de 2015): se citan como las reportan sus fuentes secundarias. Confirma la que uses en el video.
 - [ ] El ensayo dice con honestidad que **aún no hay resultados con usuarios reales** (son metas). No lo cambies a «logros».
 - [ ] El video usa **solo datos ficticios** y dura entre 3:00 y 10:00.
 - [ ] Todo lo que entregues será **público** (las bases lo indican): no incluyas datos de personas reales.
