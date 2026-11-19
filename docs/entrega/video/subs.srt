@@ -1,0 +1,435 @@
+1
+00:00:00,400 --> 00:00:00,734
+Lazo.
+
+2
+00:00:00,774 --> 00:00:04,404
+Un acompañante para las medicinas, las citas y el
+
+3
+00:00:04,444 --> 00:00:07,849
+bienestar de personas con discapacidad visual,
+
+4
+00:00:07,889 --> 00:00:11,668
+motriz o en el espectro autista, y para quienes las
+
+5
+00:00:11,708 --> 00:00:12,192
+cuidan.
+
+6
+00:00:13,332 --> 00:00:17,088
+Cuidar la salud todos los días exige leer, recordar,
+
+7
+00:00:17,128 --> 00:00:20,446
+tocar botones pequeños y coordinarse con otras
+
+8
+00:00:20,486 --> 00:00:21,103
+personas.
+
+9
+00:00:21,143 --> 00:00:24,899
+Para una persona con discapacidad visual o motriz, o
+
+10
+00:00:24,939 --> 00:00:28,402
+para una persona autista, cada uno de esos pasos
+
+11
+00:00:28,442 --> 00:00:30,008
+puede ser una barrera.
+
+12
+00:00:30,048 --> 00:00:32,855
+Cuando falla uno, falla el tratamiento:
+
+13
+00:00:32,895 --> 00:00:36,286
+se omite una dosis, se pierde una cita, o quien
+
+14
+00:00:36,326 --> 00:00:37,892
+cuida se entera tarde.
+
+15
+00:00:39,032 --> 00:00:42,200
+En Chihuahua, el Plan Estatal de Desarrollo reporta
+
+16
+00:00:42,240 --> 00:00:45,346
+más de quinientas ochenta y siete mil personas con
+
+17
+00:00:45,386 --> 00:00:47,422
+alguna limitación o discapacidad.
+
+18
+00:00:47,462 --> 00:00:50,315
+La Organización Mundial de la Salud estima que
+
+19
+00:00:50,355 --> 00:00:53,524
+alrededor de una de cada cien niñas y niños está en
+
+20
+00:00:53,564 --> 00:00:56,418
+el espectro autista, y que en las enfermedades
+
+21
+00:00:56,458 --> 00:00:59,374
+crónicas solo cerca de la mitad de las personas
+
+22
+00:00:59,414 --> 00:01:01,576
+sigue su tratamiento a largo plazo.
+
+23
+00:01:02,716 --> 00:01:06,164
+El objetivo de Lazo es dar autonomía en el cuidado
+
+24
+00:01:06,204 --> 00:01:09,512
+diario de la salud, y mantener informado a quien
+
+25
+00:01:09,552 --> 00:01:12,930
+acompaña, con una herramienta gratuita, de código
+
+26
+00:01:12,970 --> 00:01:16,487
+abierto y accesible desde su diseño, en el teléfono
+
+27
+00:01:16,527 --> 00:01:17,882
+y en la computadora.
+
+28
+00:01:17,922 --> 00:01:19,417
+No es asistencialista:
+
+29
+00:01:19,457 --> 00:01:23,044
+la persona decide y actúa, y la tecnología se adapta
+
+30
+00:01:23,084 --> 00:01:23,532
+a ella.
+
+31
+00:01:24,672 --> 00:01:28,715
+Para mostrarlo, conozcamos a Mateo, una persona
+
+32
+00:01:28,755 --> 00:01:29,497
+ficticia.
+
+33
+00:01:29,537 --> 00:01:31,235
+Es un joven autista.
+
+34
+00:01:31,275 --> 00:01:35,144
+Toma risperidona, por eso vigila su peso y su
+
+35
+00:01:35,184 --> 00:01:39,575
+glucosa, y lleva terapia ocupacional y de lenguaje.
+
+36
+00:01:39,615 --> 00:01:42,008
+Su mamá, Laura, lo acompaña.
+
+37
+00:01:43,148 --> 00:01:45,429
+Esta es la pantalla de inicio.
+
+38
+00:01:45,469 --> 00:01:49,451
+Lo primero que Mateo alcanza es el botón para hablar
+
+39
+00:01:49,491 --> 00:01:50,147
+con Lazo.
+
+40
+00:01:50,187 --> 00:01:54,015
+Abajo aparece la medicina que toca ahora, en letra
+
+41
+00:01:54,055 --> 00:01:54,556
+grande.
+
+42
+00:01:54,596 --> 00:01:58,424
+La alarma suena aunque no haya internet, se lee en
+
+43
+00:01:58,464 --> 00:02:01,673
+voz alta, y se confirma con un solo toque:
+
+44
+00:02:01,713 --> 00:02:02,524
+ya la tomé.
+
+45
+00:02:03,664 --> 00:02:07,415
+Mateo puede hablar con Lazo con su voz, o escribir
+
+46
+00:02:07,455 --> 00:02:10,524
+si lo prefiere, y tocar frases sugeridas.
+
+47
+00:02:10,564 --> 00:02:13,102
+Lazo entiende el lenguaje natural:
+
+48
+00:02:13,142 --> 00:02:16,590
+le dice qué tiene mañana, registra sus tomas y
+
+49
+00:02:16,630 --> 00:02:17,879
+agenda sus citas.
+
+50
+00:02:17,919 --> 00:02:20,760
+Nunca diagnostica ni cambia una dosis.
+
+51
+00:02:21,900 --> 00:02:25,246
+Los cambios inesperados pueden generar ansiedad.
+
+52
+00:02:25,286 --> 00:02:28,632
+Por eso cada cita guarda notas pensadas para él,
+
+53
+00:02:28,672 --> 00:02:32,300
+como llevar sus audífonos de cancelación de ruido, y
+
+54
+00:02:32,340 --> 00:02:35,756
+Lazo se la recuerda la víspera y dos horas antes.
+
+55
+00:02:36,896 --> 00:02:40,742
+En medicinas, Lazo calcula para cuántos días alcanza
+
+56
+00:02:40,782 --> 00:02:44,254
+cada una, siguiendo su calendario real, y avisa
+
+57
+00:02:44,294 --> 00:02:46,048
+cuando hay que resurtir.
+
+58
+00:02:47,188 --> 00:02:50,843
+En cómo estoy, Mateo anota su presión, glucosa,
+
+59
+00:02:50,883 --> 00:02:54,853
+ánimo, dolor y peso con botones grandes de colores.
+
+60
+00:02:54,893 --> 00:02:58,234
+Si un valor sale de rango, aparece un aviso
+
+61
+00:02:58,274 --> 00:03:02,165
+orientativo, nunca un diagnóstico, para llevarlo a
+
+62
+00:03:02,205 --> 00:03:03,108
+su consulta.
+
+63
+00:03:04,248 --> 00:03:07,840
+Si Mateo necesita ayuda, basta con un botón, que
+
+64
+00:03:07,880 --> 00:03:11,774
+pide confirmación para evitar toques accidentales, o
+
+65
+00:03:11,814 --> 00:03:12,530
+con decir:
+
+66
+00:03:12,570 --> 00:03:13,665
+necesito ayuda.
+
+67
+00:03:13,705 --> 00:03:17,599
+Lazo avisa de inmediato a su círculo de cuidado y le
+
+68
+00:03:17,639 --> 00:03:20,096
+ofrece llamar al nueve, uno, uno.
+
+69
+00:03:21,236 --> 00:03:25,382
+Su mamá, Laura, se unió al círculo con un código de
+
+70
+00:03:25,422 --> 00:03:26,449
+seis dígitos.
+
+71
+00:03:26,489 --> 00:03:30,306
+Ve, solo en lectura, sus tomas, sus citas y sus
+
+72
+00:03:30,346 --> 00:03:34,328
+avisos, y el pedido de ayuda aparece primero, con
+
+73
+00:03:34,368 --> 00:03:34,903
+alarma.
+
+74
+00:03:34,943 --> 00:03:38,596
+Mateo puede quitarle el acceso cuando quiera.
+
+75
+00:03:39,736 --> 00:03:42,951
+En la computadora, Lazo vive en una barra en la
+
+76
+00:03:42,991 --> 00:03:45,029
+parte superior de la pantalla.
+
+77
+00:03:45,069 --> 00:03:48,561
+Muestra el mismo día, sincronizado con el teléfono,
+
+78
+00:03:48,601 --> 00:03:52,094
+avisa de las tomas y de las citas, y el dictado por
+
+79
+00:03:52,134 --> 00:03:54,864
+voz se procesa en la propia computadora.
+
+80
+00:03:56,004 --> 00:03:58,805
+La accesibilidad es el centro del proyecto:
+
+81
+00:03:58,845 --> 00:04:01,976
+contraste de al menos siete a uno, modo amarillo
+
+82
+00:04:02,016 --> 00:04:05,412
+sobre negro, letra hasta el doble de tamaño, botones
+
+83
+00:04:05,452 --> 00:04:08,451
+de al menos sesenta y cuatro puntos, lector de
+
+84
+00:04:08,491 --> 00:04:11,688
+pantalla en cada elemento, y ningún estado que se
+
+85
+00:04:11,728 --> 00:04:13,340
+comunique solo con color.
+
+86
+00:04:14,480 --> 00:04:18,084
+Lazo también reúne las convocatorias de apoyo de la
+
+87
+00:04:18,124 --> 00:04:21,586
+Secretaría de Desarrollo Humano y Bien Común, con
+
+88
+00:04:21,626 --> 00:04:25,159
+las de discapacidad primero y el enlace oficial de
+
+89
+00:04:25,199 --> 00:04:25,802
+cada una.
+
+90
+00:04:25,842 --> 00:04:27,088
+No inventa fechas.
+
+91
+00:04:28,228 --> 00:04:30,866
+El prototipo funciona de punta a punta:
+
+92
+00:04:30,906 --> 00:04:34,367
+un servidor propio, la aplicación para Android y el
+
+93
+00:04:34,407 --> 00:04:35,946
+asistente para Windows.
+
+94
+00:04:35,986 --> 00:04:39,310
+Está respaldado por cuatrocientas cincuenta y dos
+
+95
+00:04:39,350 --> 00:04:42,743
+pruebas automáticas, incluidas pruebas de pantalla
+
+96
+00:04:42,783 --> 00:04:44,940
+con lector y con letra al doble.
+
+97
+00:04:46,080 --> 00:04:49,524
+Aún no hay resultados con personas usuarias reales,
+
+98
+00:04:49,564 --> 00:04:52,324
+así que, con honestidad, estas son metas:
+
+99
+00:04:52,364 --> 00:04:55,671
+un piloto con veinte personas y sus cuidadores en
+
+100
+00:04:55,711 --> 00:04:58,814
+seis meses, quinientos hogares en dos años con
+
+101
+00:04:58,854 --> 00:05:01,819
+asociaciones y DIF municipales, y libre para
+
+102
+00:05:01,859 --> 00:05:03,800
+cualquier persona del estado.
+
+103
+00:05:04,940 --> 00:05:08,157
+Lazo es código abierto, sin cuentas ni pagos.
+
+104
+00:05:08,197 --> 00:05:11,922
+Cualquier municipio, DIF o asociación puede instalar
+
+105
+00:05:11,962 --> 00:05:15,469
+su propio servidor, con sus propios datos, en los
+
+106
+00:05:15,509 --> 00:05:18,364
+sesenta y siete municipios de Chihuahua.
+
+107
+00:05:19,504 --> 00:05:22,589
+Lazo devuelve el control a la persona, y
+
+108
+00:05:22,629 --> 00:05:24,933
+tranquilidad a quien la cuida.
+
+109
+00:05:24,973 --> 00:05:26,808
+Gracias por su atención.
