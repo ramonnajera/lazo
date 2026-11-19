@@ -1,6 +1,6 @@
 # Lazo
 
-Un acompañante para las **medicinas, las citas y el bienestar de personas con discapacidad visual o motriz**, y para
+Un acompañante para las **medicinas, las citas y el bienestar de personas con discapacidad visual, motriz o en el espectro autista**, y para
 quienes las cuidan. Gratuito, de código abierto y accesible desde su diseño.
 
 > Proyecto presentado al *Premio Estatal por la Discapacidad «Manuel Trueva Martínez 2026»* (Chihuahua).
