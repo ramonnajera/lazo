@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.semantics.getOrNull
@@ -58,8 +59,14 @@ class PantallasTest {
         MensajeChat(true, "¿Qué tengo hoy?", audio = true),
         MensajeChat(false, "Hoy tienes 3 tomas: ya tomaste 1 y faltan 2. La siguiente es Losartán, 50 mg, hoy a las 12 del día."),
         MensajeChat(true, "Ya la tomé"),
-        MensajeChat(false, "No pude conectar con el servidor (UnknownHostException). Revisa tu conexión a internet.", error = true),
+        MensajeChat(false, mx.lazo.app.data.LazoApi.MENSAJE_SIN_CONEXION, error = true),
     ))
+
+    private val alertasCuidador = listOf(
+        Alerta("x", "dosis-atrasada", "alta", "2026-11-18T12:00:00-06:00", "Sin confirmar: Losartán", "La toma de las 12:00 no se ha confirmado.", false),
+        Alerta("ay", "ayuda", "alta", "2026-11-18T09:40:00-06:00", "Ana pidió ayuda", "", false),
+        Alerta("o", "dosis-omitida", "media", "2026-11-17T20:00:00-06:00", "Omitió: Metformina", "Marcó como omitida la toma de las 20:00.", true),
+    )
 
     @Before fun preparar() { Prefs.de(app).cerrarSesion(); vm = AppViewModel(app) }
 
@@ -250,6 +257,102 @@ class PantallasTest {
         rule.onNodeWithText("Guardando…").assertIsNotEnabled()
     }
 
+    // ---------- «Necesito ayuda» ----------
+    @Test fun necesitoAyudaPideConfirmarYUnDobleToqueNoConfirma() {
+        mostrar { val u by vm.ui.collectAsState(); PanelAyuda(vm, u) {} }
+        val boton = rule.onNodeWithText("Necesito ayuda").assertHasClickAction().fetchSemanticsNode().boundsInRoot
+        assertTrue("el botón de ayuda mide al menos 64 dp", boton.height >= 64f * 2f)
+        rule.onNodeWithText("Necesito ayuda").performClick(); rule.waitForIdle()
+        assertEquals(EstadoAyuda.Confirmando, vm.ui.value.ayuda) // el primer toque no avisa a nadie
+        val si = rule.onNodeWithText("Sí, avisar a mis cuidadores").assertHasClickAction().fetchSemanticsNode().boundsInRoot
+        assertTrue("el «Sí» queda debajo de donde estaba el primer botón: $si vs $boton", si.top >= boton.bottom)
+        rule.onNodeWithText("No, cancelar").performClick(); rule.waitForIdle()
+        assertEquals(EstadoAyuda.Inactiva, vm.ui.value.ayuda)
+    }
+
+    @Test fun sinConexionLaAyudaIgualOfreceLlamarAl911() {
+        mostrar { val u by vm.ui.collectAsState(); PanelAyuda(vm, u) {} }
+        rule.onNodeWithText("Necesito ayuda").performClick()
+        rule.onNodeWithText("Sí, avisar a mis cuidadores").performClick()
+        // La llamada corre en otro hilo y vuelve al principal: se da tiempo real y se vacía la cola del hilo principal
+        val limite = System.currentTimeMillis() + 5_000
+        while (vm.ui.value.ayuda !is EstadoAyuda.Fallida && System.currentTimeMillis() < limite) { Thread.sleep(50); org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle() }
+        assertTrue("estado: ${vm.ui.value.ayuda}", vm.ui.value.ayuda is EstadoAyuda.Fallida)
+        rule.waitForIdle()
+        rule.onNodeWithText(mx.lazo.app.domain.textoAyudaFallida(true)).assertExists()
+        rule.onNodeWithText("Llamar al 911").assertHasClickAction().performClick()
+        val i = org.robolectric.Shadows.shadowOf(app).nextStartedActivity
+        assertEquals(android.content.Intent.ACTION_DIAL, i.action) // marcador con el número escrito, sin permiso de llamada
+        assertEquals("tel:911", i.dataString)
+    }
+
+    @Test fun trasAvisarDiceACuantosCuidadoresYSiNoHayInvitaAAgregarlos() {
+        mostrar { PanelAyuda(vm, ui.copy(ayuda = EstadoAyuda.Enviada(2))) {} }
+        rule.onNodeWithText("Avisé a 2 cuidadores. Si es una emergencia, llama al 911.").assertExists()
+        rule.onNodeWithText("Llamar al 911").assertExists()
+        rule.onNodeWithText("Invitar a un cuidador").assertDoesNotExist()
+    }
+
+    @Test fun sinCuidadoresElAvisoExplicaComoInvitar() {
+        var destino: Pantalla? = null
+        mostrar { PanelAyuda(vm, ui.copy(ayuda = EstadoAyuda.Enviada(0))) { destino = it } }
+        rule.onNodeWithText("Todavía no tienes cuidadores: invita a alguien en Más → Mi círculo.").assertExists()
+        rule.onNodeWithText("Invitar a un cuidador").performClick()
+        assertEquals(Pantalla.Circulo, destino)
+    }
+
+    @Test fun elBotonDeAyudaEstaEnHoyALaVista() {
+        mostrar { PantallaHoy(vm, ui, {}) }
+        val n = rule.onNodeWithText("Necesito ayuda").assertExists().fetchSemanticsNode().boundsInRoot
+        assertTrue("debe verse sin desplazarse (arriba de 600 dp)", n.bottom < 600f * 2f)
+    }
+
+    @Test fun elCuidadorVePrimeroYDestacadoElPedidoDeAyuda() {
+        val alertas = listOf(
+            Alerta("d", "dosis-atrasada", "alta", "2026-11-18T12:00:00-06:00", "Sin confirmar: Losartán", "La toma de las 12:00 no se ha confirmado.", false),
+            Alerta("ay", "ayuda", "alta", "2026-11-18T09:40:00-06:00", "Ana pidió ayuda", "", false),
+        )
+        mostrar { PantallaAlertas(vm, ui.copy(rol = Rol.CUIDADOR, alertas = alertas)) }
+        val ayuda = rule.onNodeWithText("Ana pidió ayuda").fetchSemanticsNode().boundsInRoot
+        val dosis = rule.onNodeWithText("Urgente: Sin confirmar: Losartán").fetchSemanticsNode().boundsInRoot
+        assertTrue("el pedido de ayuda va primero", ayuda.top < dosis.top)
+        rule.onNode(hasContentDescription("Urgente. Ana pidió ayuda a las 9:40 de la mañana", substring = true)).assertExists()
+        rule.onNodeWithText("Ya lo atendí").assertExists()
+    }
+
+    // ---------- acciones rápidas para TalkBack y Acceso con interruptor ----------
+    @Test fun cadaTomaTieneAccionesDeTalkBack() {
+        mostrar { PantallaHoy(vm, ui, {}) }
+        val tarjeta = rule.onNode(hasContentDescription("Siguiente toma", substring = true)).fetchSemanticsNode()
+        val acciones = tarjeta.config[androidx.compose.ui.semantics.SemanticsActions.CustomActions]
+        assertEquals(listOf("Ya la tomé", "Posponer 10 minutos", "Omitir esta toma"), acciones.map { it.label })
+        rule.runOnIdle { acciones.first().action() }
+        assertTrue("b|2026-11-18|12:00" in Prefs.de(app).resueltas())
+        val tomada = rule.onNode(hasContentDescription("8 de la mañana, Metformina", substring = true)).fetchSemanticsNode()
+        assertEquals(listOf("Deshacer"), tomada.config[androidx.compose.ui.semantics.SemanticsActions.CustomActions].map { it.label })
+    }
+
+    // ---------- confirmaciones y textos ----------
+    @Test fun borrarUnaMedicionPideConfirmacion() {
+        mostrar { PantallaSeguimiento(vm, ui) {} }
+        rule.onAllNodesWithText("Eliminar")[0].performClick()
+        rule.onNodeWithText("¿Eliminar esta medición?").assertExists()
+        rule.onNodeWithText("Cancelar").performClick()
+        rule.onNodeWithText("¿Eliminar esta medición?").assertDoesNotExist()
+    }
+
+    @Test fun lasFrasesSugeridasSonBotonesNoCasillas() {
+        mostrar { PantallaChat(vm, ui) }
+        val n = rule.onNodeWithContentDescription("Decir: ¿Qué sigue?").fetchSemanticsNode()
+        assertEquals(androidx.compose.ui.semantics.Role.Button, n.config[androidx.compose.ui.semantics.SemanticsProperties.Role])
+        assertFalse(n.config.contains(androidx.compose.ui.semantics.SemanticsProperties.ToggleableState))
+    }
+
+    @Test fun mientrasLazoPiensaNoDiceQueEstaEscuchando() {
+        mostrar { PantallaChat(vm, ui.copy(chatOcupado = true)) }
+        rule.onNodeWithText("Lazo está pensando su respuesta…").assertExists()
+    }
+
     // ---------- capturas ----------
     @Test fun capturas() {
         val resumen = Resumen("Ana Ejemplo", Discapacidad.AMBAS, tomas[1], 83, listOf(DiaAdherencia("2026-11-16", 3, 3, 0, 0, 0), DiaAdherencia("2026-11-17", 3, 2, 1, 0, 0), DiaAdherencia("2026-11-18", 3, 1, 0, 1, 1)), citas, listOf(TipoMedicion.PRESION to "120/80", TipoMedicion.GLUCOSA to "260 mg/dL"),
@@ -260,6 +363,12 @@ class PantallasTest {
             "convocatorias" to { PantallaConvocatorias(vm, ui) }, "accesibilidad" to { PantallaAccesibilidad(vm, ui) }, "mas" to { PantallaMas(ui, {}) },
             "bienvenida" to { Bienvenida(vm, Ui()) }, "chat" to { PantallaChat(vm, chat) }, "chat_grabando" to { PantallaChat(vm, chat.copy(grabando = true)) },
             "cuidador_resumen" to { PantallaResumen(vm, ui.copy(rol = Rol.CUIDADOR, resumen = resumen)) },
+            "ayuda_confirmar" to { PantallaHoy(vm, ui.copy(ayuda = EstadoAyuda.Confirmando), {}) },
+            "ayuda_enviada" to { PantallaHoy(vm, ui.copy(ayuda = EstadoAyuda.Enviada(2)), {}) },
+            "ayuda_sin_cuidadores" to { PantallaHoy(vm, ui.copy(ayuda = EstadoAyuda.Enviada(0)), {}) },
+            "ayuda_sin_conexion" to { PantallaHoy(vm, ui.copy(ayuda = EstadoAyuda.Fallida(true)), {}) },
+            "cuidador_avisos_ayuda" to { PantallaAlertas(vm, ui.copy(rol = Rol.CUIDADOR, alertas = alertasCuidador)) },
+            "cuidador_resumen_ayuda" to { PantallaResumen(vm, ui.copy(rol = Rol.CUIDADOR, resumen = resumen.copy(alertas = alertasCuidador))) },
         )
         var actual by androidx.compose.runtime.mutableStateOf<(@Composable () -> Unit)?>(null)
         var alto by androidx.compose.runtime.mutableStateOf(false)
@@ -272,5 +381,9 @@ class PantallasTest {
         escala = 1.25f
         alto = true; actual = pantallas[0].second; rule.waitForIdle(); foto("hoy_alto_contraste")
         alto = false; escala = 2f; rule.waitForIdle(); foto("hoy_letra_doble")
+        actual = { PantallaHoy(vm, ui.copy(ayuda = EstadoAyuda.Confirmando), {}) }; rule.waitForIdle(); foto("ayuda_confirmar_letra_doble")
+        alto = true; escala = 1.25f; rule.waitForIdle(); foto("ayuda_confirmar_alto_contraste")
+        actual = { PantallaAlertas(vm, ui.copy(rol = Rol.CUIDADOR, alertas = alertasCuidador)) }; rule.waitForIdle(); foto("cuidador_avisos_ayuda_alto_contraste")
+        alto = false; escala = 2f; rule.waitForIdle(); foto("cuidador_avisos_ayuda_letra_doble")
     }
 }

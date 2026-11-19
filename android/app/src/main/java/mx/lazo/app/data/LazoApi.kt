@@ -73,6 +73,10 @@ class LazoApi(base: String, private val token: String? = null) {
     suspend fun actualizarConvocatorias() = send("POST", "/convocatorias/actualizar", timeoutMs = 45_000)
     suspend fun editarPerfil(body: JSONObject) = send("PATCH", "/perfil", body)
 
+    /** «Necesito ayuda»: avisa a todos los cuidadores. Responde {ayuda, cuidadores} (201, o 200 si se repitió en el último minuto). */
+    suspend fun pedirAyuda(mensaje: String? = null) =
+        send("POST", "/ayuda", JSONObject().apply { if (!mensaje.isNullOrBlank()) put("mensaje", mensaje.trim()) }, timeoutMs = 20_000)
+
     private suspend fun get(path: String) = send("GET", path)
 
     private suspend fun send(method: String, path: String, body: JSONObject? = null, timeoutMs: Int = 15_000, crudo: ByteArray? = null, tipo: String? = null): JSONObject = withContext(Dispatchers.IO) {
@@ -110,13 +114,16 @@ class LazoApi(base: String, private val token: String? = null) {
             throw e
         } catch (e: IOException) {
             android.util.Log.w("LazoApi", "$method $path falló", e)
-            throw ApiException("No pude conectar con el servidor (${e.javaClass.simpleName}: ${e.message ?: "sin detalle"}). Revisa tu conexión a internet.")
+            // El detalle técnico va al registro; a la persona, una frase que pueda entender y repetir
+            throw ApiException(MENSAJE_SIN_CONEXION)
         } finally {
             conn.disconnect()
         }
     }
 
     companion object {
+        const val MENSAJE_SIN_CONEXION = "No pude conectar con el servidor. Revisa tu conexión a internet e inténtalo otra vez."
+
         fun mensajeDeError(codigo: Int, json: JSONObject?): String {
             val del = json?.optString("error").orEmpty()
             return when {

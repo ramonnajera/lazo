@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import mx.lazo.app.alarm.Alarmas
 import mx.lazo.app.alarm.AlertasJobService
 import mx.lazo.app.alarm.Notificaciones
+import mx.lazo.app.alarm.RecordatoriosCitas
 import mx.lazo.app.alarm.Sincronizacion
 import mx.lazo.app.data.*
 import mx.lazo.app.domain.*
@@ -31,8 +32,18 @@ data class Ui(
     val cargando: Boolean = false, val mensaje: String? = null, val sinConexion: Boolean = false, val sinEnviar: Int = 0, val destino: String? = null,
     val escala: Float = 1.25f, val altoContraste: Boolean = false, val voz: Boolean = true, val velocidad: Float = 0.9f,
     val chat: List<MensajeChat> = emptyList(), val chatOcupado: Boolean = false, val grabando: Boolean = false, val guardando: Boolean = false,
+    val ayuda: EstadoAyuda = EstadoAyuda.Inactiva,
 ) {
     val conectado get() = rol != null
+}
+
+/** Los pasos de «Necesito ayuda»: pedirlo, confirmarlo con un segundo toque, enviarlo y decir qué pasó. */
+sealed interface EstadoAyuda {
+    data object Inactiva : EstadoAyuda
+    data object Confirmando : EstadoAyuda
+    data object Enviando : EstadoAyuda
+    data class Enviada(val cuidadores: Int) : EstadoAyuda
+    data class Fallida(val sinConexion: Boolean) : EstadoAyuda
 }
 
 /** Un mensaje de la conversación con Lazo. `delUsuario` distingue quién habla sin depender solo del color. */
@@ -53,6 +64,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     private fun api() = LazoApi(prefs.servidor, prefs.token)
+    private var ultimoError: String? = null
 
     // ---------- caché ----------
     private fun <T> JSONObject?.lista(clave: String, f: (JSONObject) -> T): List<T> = this?.optJSONArray(clave)?.let { a -> (0 until a.length()).map { f(a.getJSONObject(it)) } } ?: emptyList()
@@ -66,6 +78,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                 mediciones = cache.read("mediciones").lista("mediciones", Medicion::de), alertas = cache.read("alertas").lista("alertas", Alerta::de),
                 resumen = cache.read("resumen")?.let(Resumen::de), convocatorias = cache.read("convocatorias")?.let(ListaConvocatorias::de),
                 sinEnviar = prefs.cola().size,
+                cuidadores = cache.read("circulo").lista("cuidadores") { c -> Cuidador(c.getString("id"), c.getString("nombre"), c.optString("parentesco")) },
+                dispositivos = cache.read("dispositivos").lista("dispositivos") { c -> Cuidador(c.getString("id"), c.getString("nombre"), "") },
             )
         }
     }
@@ -112,10 +126,14 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                 listOf(perfil, citas, alertas, conv, meds, tomas, prox, meds2, res, cir, disp).forEach { it.await() }
             }
             cargarCache()
-            val cuidadores = cache.read("circulo").lista("cuidadores") { Cuidador(it.getString("id"), it.getString("nombre"), it.optString("parentesco")) }
-            val dispositivos = cache.read("dispositivos").lista("dispositivos") { Cuidador(it.getString("id"), it.getString("nombre"), "") }
-            _ui.update { it.copy(cargando = false, sinConexion = sinRed, mensaje = error ?: it.mensaje, cuidadores = cuidadores, dispositivos = dispositivos, sinEnviar = prefs.cola().size, hoy = hoyIso()) }
+            // Un error que no cambia (p. ej. el servidor caído) se muestra una vez, no cada minuto que la app se refresca sola
+            val nuevoError = error?.takeIf { it != ultimoError }
+            ultimoError = error
+            _ui.update { it.copy(cargando = false, sinConexion = sinRed, mensaje = nuevoError ?: it.mensaje, sinEnviar = prefs.cola().size, hoy = hoyIso()) }
             if (prefs.rol == Rol.PERSONA) Alarmas.reprogramar(app)
+            RecordatoriosCitas.reprogramar(app)
+            // El cuidador con la app abierta se entera de un pedido de ayuda al instante (sin esperar al trabajo de cada 15 min)
+            if (prefs.rol == Rol.CUIDADOR) AlertasJobService.notificar(app, Rol.CUIDADOR, _ui.value.alertas, soloAyuda = true)
         }
     }
 
@@ -127,7 +145,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             _ui.update { it.copy(cargando = true, mensaje = null) }
             try {
                 val r = LazoApi(url).crearPerfil(nombre.trim(), discapacidad, textoGrande, altoContraste)
-                prefs.cerrarSesion(); cache.clear()
+                cancelarAlarmasYBorrar(app); cache.clear()
                 prefs.servidor = url; prefs.token = r.getString("token"); prefs.nombre = nombre.trim(); prefs.rol = Rol.PERSONA
                 prefs.escalaTexto = if (textoGrande) 1.4f else 1.0f; prefs.altoContraste = altoContraste
                 _ui.update { it.copy(rol = Rol.PERSONA, nombre = nombre.trim(), escala = prefs.escalaTexto, altoContraste = altoContraste, cargando = false, mensaje = null) }
@@ -146,7 +164,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             _ui.update { it.copy(cargando = true, mensaje = null) }
             try {
                 val r = LazoApi(url).unirse(codigo, nombre.trim(), parentesco.trim())
-                prefs.cerrarSesion(); cache.clear()
+                cancelarAlarmasYBorrar(app); cache.clear()
                 prefs.servidor = url; prefs.token = r.getString("token"); prefs.nombre = nombre.trim(); prefs.rol = Rol.CUIDADOR
                 _ui.update { it.copy(rol = Rol.CUIDADOR, nombre = nombre.trim(), cargando = false, mensaje = null) }
                 AlertasJobService.programar(app)
@@ -166,7 +184,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             try {
                 val r = LazoApi(url).vincularDispositivo(codigo, nombreDispositivo.ifBlank { "Mi dispositivo" }.trim())
                 val perfil = Perfil.de(r.getJSONObject("perfil"))
-                prefs.cerrarSesion(); cache.clear()
+                cancelarAlarmasYBorrar(app); cache.clear()
                 prefs.servidor = url; prefs.token = r.getString("token"); prefs.nombre = perfil.nombre; prefs.rol = Rol.PERSONA
                 prefs.escalaTexto = if (perfil.textoGrande) 1.4f else 1.0f; prefs.altoContraste = perfil.altoContraste
                 _ui.update { it.copy(rol = Rol.PERSONA, nombre = perfil.nombre, escala = prefs.escalaTexto, altoContraste = perfil.altoContraste, cargando = false, mensaje = null) }
@@ -191,8 +209,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun quitarDispositivo(d: Cuidador) = accion("Se quitó el acceso a ${d.nombre}.") { api().quitarDispositivo(d.id) }
 
     fun cerrarSesion() {
-        prefs.cerrarSesion(); cache.clear()
-        Alarmas.reprogramar(app); AlertasJobService.programar(app)
+        cancelarAlarmasYBorrar(app); cache.clear()
+        AlertasJobService.programar(app)
         _ui.value = Ui(hoy = hoyIso(), escala = prefs.escalaTexto, altoContraste = prefs.altoContraste, voz = prefs.voz, velocidad = prefs.velocidadVoz)
     }
 
@@ -350,6 +368,29 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---------- «Necesito ayuda» ----------
+    /** Primer toque: solo pide confirmación (un toque accidental no avisa a nadie). */
+    fun pedirAyuda() { if (_ui.value.ayuda == EstadoAyuda.Inactiva) { _ui.update { it.copy(ayuda = EstadoAyuda.Confirmando) }; hablar("¿Aviso a tus cuidadores que necesitas ayuda? Pulsa el botón rojo para confirmar.", forzar = false) } }
+
+    fun cancelarAyuda() = _ui.update { it.copy(ayuda = EstadoAyuda.Inactiva) }
+
+    /** Segundo toque: avisa a los cuidadores. Sin conexión, igual ofrece llamar al 911. */
+    fun confirmarAyuda(mensaje: String? = null) {
+        if (_ui.value.ayuda != EstadoAyuda.Confirmando) return
+        _ui.update { it.copy(ayuda = EstadoAyuda.Enviando) }
+        viewModelScope.launch {
+            val estado = try {
+                val r = api().pedirAyuda(mensaje)
+                EstadoAyuda.Enviada(r.optInt("cuidadores", 0))
+            } catch (e: ApiException) {
+                EstadoAyuda.Fallida(sinConexion = e.codigo == 0)
+            }
+            _ui.update { it.copy(ayuda = estado, sinConexion = if (estado is EstadoAyuda.Fallida && estado.sinConexion) true else it.sinConexion) }
+            // Siempre en voz alta: quien no ve la pantalla tiene que saber si su aviso llegó
+            hablar(if (estado is EstadoAyuda.Enviada) textoAyudaEnviada(estado.cuidadores) else textoAyudaFallida((estado as EstadoAyuda.Fallida).sinConexion), forzar = true)
+        }
+    }
+
     // ---------- accesibilidad ----------
     fun setEscala(v: Float) { prefs.escalaTexto = v; _ui.update { it.copy(escala = prefs.escalaTexto) } }
     fun setContraste(v: Boolean) { prefs.altoContraste = v; _ui.update { it.copy(altoContraste = v) } }
@@ -361,6 +402,20 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun avisar(texto: String) = _ui.update { it.copy(mensaje = texto) }
     fun limpiarMensaje() = _ui.update { it.copy(mensaje = null) }
     fun consumirDestino() = _ui.update { it.copy(destino = null) }
+
+    companion object {
+        /** Cierra la sesión local (conserva letra, contraste y voz): primero cancela las alarmas de tomas y citas (sus códigos viven en las preferencias), luego borra. */
+        fun cancelarAlarmasYBorrar(context: android.content.Context) {
+            val prefs = Prefs.de(context)
+            prefs.rol = null
+            Alarmas.reprogramar(context)
+            RecordatoriosCitas.reprogramar(context)
+            // La letra, el contraste y la voz son de quien usa el teléfono, no de la cuenta: se conservan
+            val escala = prefs.escalaTexto; val contraste = prefs.altoContraste; val voz = prefs.voz; val velocidad = prefs.velocidadVoz
+            prefs.cerrarSesion()
+            prefs.escalaTexto = escala; prefs.altoContraste = contraste; prefs.voz = voz; prefs.velocidadVoz = velocidad
+        }
+    }
 
     override fun onCleared() { runCatching { voz.cerrar() }; runCatching { grabadora.cancelar() } }
 }

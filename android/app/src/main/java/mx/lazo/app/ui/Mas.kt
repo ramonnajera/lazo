@@ -89,10 +89,13 @@ fun PantallaConvocatorias(vm: AppViewModel, ui: Ui) {
         items(otras, key = { it.id }) { c -> TarjetaConvocatoria(c, c.id in nuevas, ::abrir) }
         item {
             Cuerpo("Lazo no inventa fechas: la Secretaría no las publica en esta lista. Abre cada convocatoria para ver los requisitos y la fecha límite.", secundario = true)
-            lista?.ultimaLectura?.let { Cuerpo("Última lectura: ${fechaCorta(it.take(10))} ${horaCorta(it.substring(11, 16))}", secundario = true) }
+            lista?.ultimaLectura?.let { textoUltimaLectura(it) }?.let { Cuerpo(it, secundario = true) }
         }
     }
 }
+
+/** «2026-11-18T08:00:00-06:00» → «Última lectura: mié 18 nov 8:00 am». null si el servidor manda algo inesperado (antes tronaba). */
+fun textoUltimaLectura(iso: String): String? = runCatching { "Última lectura: ${fechaCorta(iso.take(10))} ${horaCorta(iso.substring(11, 16))}" }.getOrNull()
 
 @Composable
 private fun TarjetaConvocatoria(c: mx.lazo.app.data.Convocatoria, nueva: Boolean, abrir: (String) -> Unit) {
@@ -133,6 +136,7 @@ fun PantallaAccesibilidad(vm: AppViewModel, ui: Ui) {
 @Composable
 fun PantallaConexion(vm: AppViewModel, ui: Ui) {
     var cerrar by remember { mutableStateOf(false) }
+    var quitar by remember { mutableStateOf<mx.lazo.app.data.Cuidador?>(null) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Titulo("Conexión") }
         item {
@@ -159,12 +163,13 @@ fun PantallaConexion(vm: AppViewModel, ui: Ui) {
             items(ui.dispositivos, key = { it.id }) { d ->
                 TarjetaLegible("Dispositivo con acceso: ${d.nombre}.") {
                     Text(d.nombre, style = MaterialTheme.typography.titleLarge, color = LocalPaleta.current.texto)
-                    BotonGrande("Quitar acceso", { vm.quitarDispositivo(d) }, tono = Tono.NEUTRO, descripcion = "Quitar el acceso a ${d.nombre}")
+                    BotonGrande("Quitar acceso", { quitar = d }, tono = Tono.NEUTRO, descripcion = "Quitar el acceso a ${d.nombre}")
                 }
             }
         }
         item { BotonGrande("Cerrar sesión en este teléfono", { cerrar = true }, tono = Tono.PELIGRO) }
     }
+    quitar?.let { d -> Confirmar("¿Quitar el acceso a ${d.nombre}?", "Ese dispositivo dejará de ver y avisarte de tus medicinas.", "Quitar acceso", { quitar = null }) { vm.quitarDispositivo(d) } }
     if (cerrar) Confirmar("¿Cerrar sesión?", "Este teléfono dejará de avisarte de tus medicinas hasta que vuelvas a conectarlo.", "Cerrar sesión", { cerrar = false }) { vm.cerrarSesion() }
 }
 

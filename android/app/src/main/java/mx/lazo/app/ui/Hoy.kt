@@ -8,6 +8,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +33,8 @@ fun PantallaHoy(vm: AppViewModel, ui: Ui, abrir: (Pantalla) -> Unit) {
         }
         // Lo primero que se ve y se alcanza: hablar con Lazo
         item { BotonHablar({ abrir(Pantalla.Chat) }) }
+        // Persona: «Necesito ayuda» bien a la vista, con confirmación. El cuidador no lo ve (solo consulta)
+        if (ui.rol == null || ui.rol == mx.lazo.app.data.Rol.PERSONA) item { PanelAyuda(vm, ui, abrir) }
         item { TarjetaSiguiente(vm, ui.proxima, ui.hoy) }
         item { FilaAccion("Leer mi día en voz alta", Icons.Filled.VolumeUp, Acento.PETROLEO, { vm.hablar(fraseHoy(ui.tomas, ui.hoy) + " " + fraseCitas(ui.citas, ui.hoy)) }) }
         if (ui.tomas.isNotEmpty()) item { Subtitulo("Tus tomas de hoy") }
@@ -62,6 +67,7 @@ private fun TarjetaSiguiente(vm: AppViewModel, d: Dosis?, hoy: String) {
     val urgente = d.estado.requiereAtencion
     TarjetaLegible(
         "Siguiente toma: ${textoDosis(d.nombre, d.dosis)}, ${fechaHablada(d.fecha, hoy)} a las ${horaHablada(d.hora)}. ${textoEstado(d.estado, d)}.",
+        modifier = Modifier.accionesRapidas(d, vm),
         fondo = if (urgente) LocalPaleta.current.fondoAviso else LocalPaleta.current.superficie,
     ) {
         Text(if (urgente) "Es hora de tu medicina" else "Siguiente toma", style = MaterialTheme.typography.titleMedium, color = LocalPaleta.current.textoSecundario)
@@ -82,7 +88,7 @@ private fun TarjetaSiguiente(vm: AppViewModel, d: Dosis?, hoy: String) {
 
 @Composable
 private fun FilaToma(d: Dosis, vm: AppViewModel) {
-    TarjetaLegible("${horaHablada(d.hora)}, ${textoDosis(d.nombre, d.dosis)}. ${textoEstado(d.estado, d)}.") {
+    TarjetaLegible("${horaHablada(d.hora)}, ${textoDosis(d.nombre, d.dosis)}. ${textoEstado(d.estado, d)}.", Modifier.accionesRapidas(d, vm)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(horaCorta(d.hora), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = LocalPaleta.current.texto)
             Column(Modifier.weight(1f)) {
@@ -95,4 +101,12 @@ private fun FilaToma(d: Dosis, vm: AppViewModel) {
             BotonGrande("Deshacer", { vm.registrar(d, Estado.PENDIENTE) }, tono = Tono.NEUTRO, descripcion = "Deshacer: volver a marcar ${d.nombre} de las ${horaHablada(d.hora)} como pendiente")
         }
     }
+}
+
+/**
+ * Acciones de TalkBack (y de Acceso con interruptor) en la tarjeta de cada toma: quien no ve o usa un interruptor confirma,
+ * pospone, omite o deshace desde la misma tarjeta que escucha, sin tener que buscar botones uno por uno.
+ */
+private fun Modifier.accionesRapidas(d: Dosis, vm: AppViewModel) = semantics {
+    customActions = accionesToma(d.estado).map { a -> CustomAccessibilityAction(a.texto) { vm.registrar(d, a.estado, a.minutos); true } }
 }

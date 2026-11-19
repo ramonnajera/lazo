@@ -113,9 +113,28 @@ class ServidorRealTest {
         assertEquals(401, fuera.codigo)
     }
 
+    /** Contrato de «Necesito ayuda». Se omite si el servidor que está en el repo aún no tiene la ruta. */
+    @Test fun necesitoAyudaAvisaALosCuidadoresYLesLlegaComoAlertaUrgente() = runBlocking {
+        val persona = LazoApi(base, LazoApi(base).crearPerfil("Ana Ejemplo", Discapacidad.VISUAL, true, false).getString("token"))
+        val sinCuidadores = runCatching { persona.pedirAyuda() }
+        assumeTrue("el servidor aún no tiene POST /ayuda", (sinCuidadores.exceptionOrNull() as? ApiException)?.codigo != 404)
+        assertEquals(0, sinCuidadores.getOrThrow().getInt("cuidadores"))
+        val codigo = persona.invitacion().getString("codigo")
+        val cuidador = LazoApi(base, LazoApi(base).unirse(codigo, "Luis Ejemplo", "hijo").getString("token"))
+        val r = persona.pedirAyuda("Me caí")
+        assertEquals(1, r.getInt("cuidadores"))
+        val alertas = cuidador.alertas().getJSONArray("alertas").let { a -> (0 until a.length()).map { Alerta.de(a.getJSONObject(it)) } }
+        val ayuda = alertas.first { it.tipo == mx.lazo.app.domain.TIPO_ALERTA_AYUDA }
+        assertEquals("alta", ayuda.severidad)
+        assertTrue(ayuda.titulo, ayuda.titulo.contains("pidió ayuda"))
+        assertEquals(ayuda, mx.lazo.app.domain.ordenarAlertas(alertas).first())
+        assertTrue(mx.lazo.app.alarm.AlertasJobService.filtrar(Rol.CUIDADOR, alertas, emptySet()).contains(ayuda))
+    }
+
     @Test fun sinServidorElErrorEsClaro() = runBlocking {
         val libre = ServerSocket(0).use { it.localPort }
         val ex = runCatching { LazoApi("http://127.0.0.1:$libre").health() }.exceptionOrNull() as ApiException
         assertTrue(ex.message!!.startsWith("No pude conectar"))
+        assertFalse("sin nombres técnicos de Java: ${ex.message}", ex.message!!.contains("Exception"))
     }
 }

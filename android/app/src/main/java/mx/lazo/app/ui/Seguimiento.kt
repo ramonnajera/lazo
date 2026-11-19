@@ -28,6 +28,7 @@ private val NIVELES_ANIMO = listOf(1 to "Muy mal", 2 to "Mal", 3 to "Regular", 4
 @Composable
 fun PantallaSeguimiento(vm: AppViewModel, ui: Ui, abrir: (Pantalla) -> Unit) {
     val columnas = if (LocalDensity.current.fontScale >= 1.5f) 1 else 2
+    var borrar by remember { mutableStateOf<Medicion?>(null) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = RellenoPantalla, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Titulo("¿Cómo estoy?") }
         item { Cuerpo("Anota cómo te sientes o lo que mide tu aparato. Tu cuidador lo verá.", secundario = true) }
@@ -38,8 +39,10 @@ fun PantallaSeguimiento(vm: AppViewModel, ui: Ui, abrir: (Pantalla) -> Unit) {
             }
         }
         if (ui.mediciones.isNotEmpty()) item { Subtitulo("Lo que has anotado") }
-        items(ui.mediciones.take(30), key = { it.id }) { m -> FilaMedicion(m) { vm.borrarMedicion(m.id) } }
+        items(ui.mediciones.take(30), key = { it.id }) { m -> FilaMedicion(m) { borrar = m } }
     }
+    // Borrar pide confirmación: un temblor o un toque de más no debe perder un registro de salud
+    borrar?.let { m -> Confirmar("¿Eliminar esta medición?", "${m.tipo.titulo}: ${m.texto}, ${fechaCorta(m.fecha)} a las ${horaCorta(m.hora)}. No se puede deshacer.", "Eliminar", { borrar = null }) { vm.borrarMedicion(m.id) } }
 }
 
 fun acentoDe(t: TipoMedicion) = when (t) {
@@ -133,8 +136,8 @@ fun FormMedicion(vm: AppViewModel, tipo: TipoMedicion, volver: () -> Unit) {
                 else {
                     error = null
                     vm.registrarMedicion(tipo, valor, nota.trim()) { aviso ->
-                        if (aviso == null) { vm.hablar("Listo, lo anoté."); volver() }
-                        else { resultado = "${aviso.texto}. Es un aviso orientativo, no un diagnóstico. Si no te sientes bien, consulta a tu médico."; vm.hablar(resultado!!) }
+                        if (aviso == null) { vm.hablar("Listo, lo anoté.", forzar = false); volver() }
+                        else { resultado = "${aviso.texto}. Es un aviso orientativo, no un diagnóstico. Si no te sientes bien, consulta a tu médico."; vm.hablar(resultado!!, forzar = false) }
                     }
                 }
             }, tono = Tono.EXITO, habilitado = !guardando)

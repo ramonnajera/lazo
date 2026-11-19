@@ -3,10 +3,23 @@ package mx.lazo.app.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Sos
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import mx.lazo.app.data.Alerta
 import mx.lazo.app.data.DiaAdherencia
@@ -16,12 +29,43 @@ private fun etiquetaSeveridad(s: String) = when (s) { "alta" -> "Urgente"; "medi
 
 @Composable
 private fun TarjetaAlerta(a: Alerta, alVer: (() -> Unit)?) {
+    if (a.tipo == TIPO_ALERTA_AYUDA) return TarjetaAyuda(a, alVer)
     TarjetaLegible("${etiquetaSeveridad(a.severidad)}. ${a.titulo}. ${a.detalle}") {
         Aviso("${etiquetaSeveridad(a.severidad)}: ${a.titulo}", peligro = a.severidad == "alta")
         Cuerpo(a.detalle, secundario = true)
         if (alVer != null) BotonGrande("Ya lo vi", alVer, tono = Tono.NEUTRO, descripcion = "Marcar como visto: ${a.titulo}")
     }
 }
+
+/** Un pedido de ayuda: lo más visible de la pantalla. Fondo y borde rojos, ícono SOS y la palabra «Urgente» (nunca solo color). */
+@Composable
+private fun TarjetaAyuda(a: Alerta, alVer: (() -> Unit)?) {
+    val p = LocalPaleta.current
+    val cuando = horaDeAlerta(a.fecha)
+    val detalle = a.detalle.ifBlank { "Comunícate con esa persona cuanto antes. Si no responde y crees que es una emergencia, llama al 911." }
+    Surface(
+        shape = RoundedCornerShape(20.dp), color = p.fondoPeligro, border = BorderStroke(4.dp, p.peligro),
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = "Urgente. ${a.titulo}${if (cuando != null) " a las ${horaHablada(cuando)}" else ""}. $detalle" },
+    ) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Box(Modifier.size(56.dp).clip(CircleShape).background(p.peligro), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Sos, contentDescription = null, tint = if (p.altoContraste) Color.Black else Color.White, modifier = Modifier.size(36.dp))
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("Urgente", style = MaterialTheme.typography.titleMedium, color = p.texto)
+                    Text(a.titulo, style = MaterialTheme.typography.headlineMedium, color = p.texto)
+                }
+            }
+            if (cuando != null) Cuerpo("A las ${horaCorta(cuando)}")
+            Cuerpo(detalle)
+            if (alVer != null) BotonGrande("Ya lo atendí", alVer, tono = Tono.NEUTRO, descripcion = "Marcar como atendido: ${a.titulo}")
+        }
+    }
+}
+
+/** «2026-11-18T09:30:00-06:00» → «09:30». */
+private fun horaDeAlerta(fecha: String): String? = Regex("T(\\d{2}:\\d{2})").find(fecha)?.groupValues?.get(1)
 
 @Composable
 fun PantallaResumen(vm: AppViewModel, ui: Ui) {
@@ -31,7 +75,7 @@ fun PantallaResumen(vm: AppViewModel, ui: Ui) {
         if (r == null) { item { Cuerpo(if (ui.cargando) "Cargando…" else "Todavía no hay datos. Revisa la conexión.", secundario = true) }; return@LazyColumn }
         if (r.alertas.isNotEmpty()) {
             item { Subtitulo("Necesita tu atención") }
-            items(r.alertas, key = { it.id }) { a -> TarjetaAlerta(a) { vm.marcarVista(a) } }
+            items(ordenarAlertas(r.alertas), key = { it.id }) { a -> TarjetaAlerta(a) { vm.marcarVista(a) } }
         } else item { Aviso("Todo en orden: no hay avisos pendientes.") }
         item { Subtitulo("Esta semana") }
         item {
@@ -75,7 +119,8 @@ private fun BarraTomas(d: DiaAdherencia) {
 
 @Composable
 fun PantallaAlertas(vm: AppViewModel, ui: Ui) {
-    val activas = ui.alertas.filter { !it.visto }
+    // Los pedidos de ayuda siempre arriba, luego lo urgente
+    val activas = ordenarAlertas(ui.alertas.filter { !it.visto })
     val vistas = ui.alertas.filter { it.visto }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Titulo("Avisos") }

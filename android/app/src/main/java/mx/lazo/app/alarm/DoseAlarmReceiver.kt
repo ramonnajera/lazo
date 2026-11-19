@@ -13,6 +13,7 @@ class DoseAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val clave = intent.getStringExtra("clave") ?: return
         val prefs = Prefs.de(context)
+        if (prefs.rol != mx.lazo.app.data.Rol.PERSONA) return // sesión cerrada: una alarma vieja no debe sonar
         if (clave in prefs.resueltas()) { Alarmas.reprogramar(context); return } // ya la tomó o la omitió: no molestar
         val a = Alarma(
             clave, intent.getLongExtra("millis", 0), intent.getStringExtra("nombre").orEmpty(), intent.getStringExtra("dosis").orEmpty(),

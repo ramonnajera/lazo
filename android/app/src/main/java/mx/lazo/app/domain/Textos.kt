@@ -100,3 +100,37 @@ fun fechaLarga(fechaIso: String): String = LocalDate.parse(fechaIso).let { "${no
 
 /** «1 2 3 4 5 6»: un código con espacios para que se lea (y se dicte) dígito por dígito. */
 fun codigoEspaciado(c: String) = c.toList().joinToString(" ")
+
+// ---------- «Necesito ayuda» ----------
+const val TIPO_ALERTA_AYUDA = "ayuda"
+
+/** Lo que se le dice a la persona cuando su aviso de ayuda llegó al servidor. */
+fun textoAyudaEnviada(cuidadores: Int): String =
+    if (cuidadores <= 0) "Todavía no tienes cuidadores: invita a alguien en Más → Mi círculo."
+    else "Avisé a ${plural(cuidadores, "cuidador", "cuidadores")}. Si es una emergencia, llama al 911."
+
+/** Cuando no se pudo avisar: siempre se ofrece el 911. */
+fun textoAyudaFallida(sinConexion: Boolean): String =
+    if (sinConexion) "No pude avisar a tus cuidadores porque no hay conexión. Si es una emergencia, llama al 911."
+    else "No pude avisar a tus cuidadores. Si es una emergencia, llama al 911."
+
+/** Avisos para el cuidador: primero los pedidos de ayuda, luego los urgentes, después lo demás (más reciente primero). */
+fun ordenarAlertas(alertas: List<mx.lazo.app.data.Alerta>): List<mx.lazo.app.data.Alerta> {
+    fun peso(a: mx.lazo.app.data.Alerta) = when {
+        a.tipo == TIPO_ALERTA_AYUDA -> 0
+        a.severidad == "alta" -> 1
+        a.severidad == "media" -> 2
+        else -> 3
+    }
+    return alertas.sortedWith(compareBy<mx.lazo.app.data.Alerta> { peso(it) }.thenByDescending { it.fecha })
+}
+
+// ---------- acciones rápidas de cada toma (TalkBack y Acceso con interruptor) ----------
+/** Una acción sobre una toma: lo que TalkBack ofrece en su menú de acciones y el estado al que lleva. */
+data class AccionToma(val texto: String, val estado: Estado, val minutos: Int? = null)
+
+/** Qué se puede hacer con una toma según su estado: lo pendiente se confirma, pospone u omite; lo resuelto se deshace. */
+fun accionesToma(e: Estado): List<AccionToma> = when (e) {
+    Estado.TOMADA, Estado.OMITIDA -> listOf(AccionToma("Deshacer", Estado.PENDIENTE))
+    else -> listOf(AccionToma("Ya la tomé", Estado.TOMADA), AccionToma("Posponer 10 minutos", Estado.POSPUESTA, 10), AccionToma("Omitir esta toma", Estado.OMITIDA))
+}

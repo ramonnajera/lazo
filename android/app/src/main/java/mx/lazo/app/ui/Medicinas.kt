@@ -78,7 +78,6 @@ fun FormMedicamento(vm: AppViewModel, ui: Ui, id: String?, volver: () -> Unit) {
             }
         }
         item {
-            var agregando by remember { mutableStateOf<String?>(null) }
             SelectorHora("Agregar un horario", null, { h -> if (h !in horarios) { horarios.add(h); horarios.sort() } })
         }
         item { Subtitulo("¿Qué días?") }

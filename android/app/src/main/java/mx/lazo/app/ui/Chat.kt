@@ -22,7 +22,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -58,10 +62,10 @@ fun PantallaChat(vm: AppViewModel, ui: Ui) {
             item { Titulo("Hablar con Lazo") }
             item { Burbuja(MensajeChat(false, "Hola${if (ui.nombre.isNotBlank()) ", ${ui.nombre.substringBefore(' ')}" else ""}. Pulsa el micrófono y dime qué necesitas, o escribe. Por ejemplo: «¿qué sigue?» o «ya la tomé».")) }
             items(ui.chat) { Burbuja(it) }
-            if (ui.chatOcupado) item { Cuerpo("Lazo está escuchando…", secundario = true) }
+            if (ui.chatOcupado) item { Cuerpo("Lazo está pensando su respuesta…", secundario = true, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
         }
         LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(SUGERENCIAS) { s -> Ficha(s, false, { vm.enviarAlChat(s) }) }
+            items(SUGERENCIAS) { s -> Sugerencia(s, habilitada = !ui.chatOcupado) { vm.enviarAlChat(s) } }
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
@@ -81,6 +85,18 @@ fun PantallaChat(vm: AppViewModel, ui: Ui) {
             habilitado = !ui.chatOcupado,
             descripcion = if (ui.grabando) "Estoy grabando. Pulsa para enviar tu mensaje a Lazo." else "Pulsa para empezar a hablar con Lazo. Vuelve a pulsar cuando termines.",
         )
+    }
+}
+
+/** Frase sugerida: un botón (TalkBack la anuncia como botón, no como casilla), grande y con borde. */
+@Composable
+private fun Sugerencia(texto: String, habilitada: Boolean, alPulsar: () -> Unit) {
+    val p = LocalPaleta.current
+    Surface(
+        onClick = alPulsar, enabled = habilitada, shape = RoundedCornerShape(16.dp), color = p.superficie, contentColor = p.texto, border = BorderStroke(2.dp, p.borde),
+        modifier = Modifier.heightIn(min = 64.dp).semantics { role = Role.Button; contentDescription = "Decir: $texto" },
+    ) {
+        Box(Modifier.padding(horizontal = 18.dp, vertical = 12.dp), contentAlignment = Alignment.Center) { Text(texto, style = MaterialTheme.typography.labelLarge) }
     }
 }
 

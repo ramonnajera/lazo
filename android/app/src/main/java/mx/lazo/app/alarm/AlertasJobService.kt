@@ -11,9 +11,11 @@ import mx.lazo.app.data.Alerta
 import mx.lazo.app.data.LazoApi
 import mx.lazo.app.data.Prefs
 import mx.lazo.app.data.Rol
+import mx.lazo.app.domain.TIPO_ALERTA_AYUDA
+import mx.lazo.app.domain.ordenarAlertas
 import org.json.JSONObject
 
-/** Cada ~15 minutos consulta el servidor: el cuidador se entera de una dosis sin confirmar sin tener la app abierta. */
+/** Cada ~15 minutos (lo mínimo que permite Android para un trabajo periódico; con la app abierta se revisa cada 30 s) consulta el servidor: el cuidador se entera de una dosis sin confirmar sin tener la app abierta. */
 class AlertasJobService : JobService() {
     override fun onStartJob(params: JobParameters?): Boolean {
         val contexto = applicationContext
@@ -41,7 +43,7 @@ class AlertasJobService : JobService() {
         /** Qué alertas merecen una notificación: al cuidador, lo grave; a la persona, las convocatorias nuevas. */
         fun filtrar(rol: Rol, alertas: List<Alerta>, yaNotificadas: Set<String>): List<Alerta> = alertas.filter { a ->
             !a.visto && a.id !in yaNotificadas && when (rol) {
-                Rol.CUIDADOR -> a.severidad == "alta" || a.severidad == "media"
+                Rol.CUIDADOR -> a.tipo == TIPO_ALERTA_AYUDA || a.severidad == "alta" || a.severidad == "media"
                 Rol.PERSONA -> a.tipo == "convocatoria-nueva"
             }
         }
@@ -55,8 +57,14 @@ class AlertasJobService : JobService() {
                 LazoApi(prefs.servidor, prefs.token).alertas()
             }
             val arr = json.optJSONArray("alertas") ?: return
-            val alertas = (0 until arr.length()).map { Alerta.de(arr.getJSONObject(it)) }
-            for (a in filtrar(rol, alertas, prefs.notificadas())) {
+            notificar(context, rol, (0 until arr.length()).map { Alerta.de(arr.getJSONObject(it)) })
+        }
+
+        /** Publica las alertas nuevas (una sola vez cada una); los pedidos de ayuda, primero. `soloAyuda`: con la app abierta solo interrumpe lo urgente. */
+        fun notificar(context: Context, rol: Rol, alertas: List<Alerta>, soloAyuda: Boolean = false) {
+            val prefs = Prefs.de(context)
+            for (a in ordenarAlertas(filtrar(rol, alertas, prefs.notificadas()))) {
+                if (soloAyuda && a.tipo != TIPO_ALERTA_AYUDA) continue
                 Notificaciones.mostrarAlerta(context, a)
                 prefs.marcarNotificada(a.id)
             }

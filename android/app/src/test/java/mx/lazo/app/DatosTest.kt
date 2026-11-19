@@ -97,4 +97,47 @@ class DatosTest {
         assertEquals(listOf("1", "3"), AlertasJobService.filtrar(Rol.CUIDADOR, alertas, setOf("6")).map { it.id }) // la vista y la ya notificada no repiten
         assertEquals(listOf("5"), AlertasJobService.filtrar(Rol.PERSONA, alertas, emptySet()).map { it.id })
     }
+
+    @Test fun elPedidoDeAyudaSuenaComoAlarmaYNuncaLeLlegaALaPersona() {
+        val ayuda = Alerta("ayuda:1", "ayuda", "alta", "2026-11-18T09:00:00-06:00", "Ana pidió ayuda", "", false)
+        assertEquals(listOf("ayuda:1"), AlertasJobService.filtrar(Rol.CUIDADOR, listOf(ayuda), emptySet()).map { it.id })
+        assertTrue(AlertasJobService.filtrar(Rol.PERSONA, listOf(ayuda), emptySet()).isEmpty())
+        mx.lazo.app.alarm.Notificaciones.crearCanales(ctx)
+        val nm = ctx.getSystemService(android.app.NotificationManager::class.java)
+        val canal = nm.getNotificationChannel(mx.lazo.app.alarm.Notificaciones.CANAL_AYUDA)
+        assertEquals(android.app.NotificationManager.IMPORTANCE_HIGH, canal.importance)
+        assertEquals(android.media.AudioAttributes.USAGE_ALARM, canal.audioAttributes.usage)
+        org.robolectric.Shadows.shadowOf(ctx as android.app.Application).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        val prefs = Prefs.de(ctx)
+        AlertasJobService.notificar(ctx, Rol.CUIDADOR, listOf(ayuda, Alerta("d", "dosis-atrasada", "alta", "", "Sin confirmar", "x", false)), soloAyuda = true)
+        val publicadas = org.robolectric.Shadows.shadowOf(nm).allNotifications
+        assertEquals(1, publicadas.size) // con la app abierta solo interrumpe el pedido de ayuda
+        val n = publicadas.single()
+        assertEquals(mx.lazo.app.alarm.Notificaciones.CANAL_AYUDA, n.channelId)
+        assertEquals("Urgente: Ana pidió ayuda", n.extras.getString(android.app.Notification.EXTRA_TITLE))
+        assertTrue(n.extras.getCharSequence(android.app.Notification.EXTRA_TEXT).toString().contains("911"))
+        assertTrue("ayuda:1" in prefs.notificadas())
+        AlertasJobService.notificar(ctx, Rol.CUIDADOR, listOf(ayuda))
+        assertEquals("el mismo pedido no vuelve a sonar", 1, org.robolectric.Shadows.shadowOf(nm).allNotifications.size)
+    }
+
+    @Test fun losRecordatoriosDeCitasSeProgramanDesdeLaCacheYSeCancelanAlCerrarSesion() {
+        val prefs = Prefs.de(ctx)
+        prefs.cerrarSesion()
+        prefs.servidor = "http://x"; prefs.token = "t"; prefs.rol = Rol.PERSONA
+        val ahora = java.time.LocalDateTime.parse("2026-11-18T10:00:00")
+        Cache(ctx).write("citas", JSONObject().put("citas", org.json.JSONArray().put(JSONObject().put("id", "c1").put("especialista", "Oftalmología").put("fecha", "2026-11-20").put("hora", "09:30"))))
+        mx.lazo.app.alarm.RecordatoriosCitas.reprogramar(ctx, with(mx.lazo.app.domain.ZONA) { ahora.toEpochSecond(this) * 1000 })
+        val am = org.robolectric.Shadows.shadowOf(ctx.getSystemService(android.app.AlarmManager::class.java))
+        val tiempos = am.scheduledAlarms.map { it.triggerAtTime }.sorted()
+        assertEquals(listOf(java.time.LocalDateTime.parse("2026-11-19T20:00:00"), java.time.LocalDateTime.parse("2026-11-20T07:30:00")).map { it.toEpochSecond(mx.lazo.app.domain.ZONA) * 1000 }, tiempos)
+        assertEquals(2, prefs.programadasCitas().size)
+        // Al cerrar sesión se cancelan ANTES de borrar las preferencias (si no, se pierden los códigos y las alarmas quedan sueltas)
+        prefs.escalaTexto = 1.8f; prefs.altoContraste = true
+        mx.lazo.app.ui.AppViewModel.cancelarAlarmasYBorrar(ctx)
+        assertTrue(am.scheduledAlarms.isEmpty())
+        assertFalse(prefs.conectado)
+        assertEquals(1.8f, prefs.escalaTexto); assertTrue(prefs.altoContraste) // la letra grande y el contraste no se pierden
+        assertTrue(prefs.programadasCitas().isEmpty())
+    }
 }

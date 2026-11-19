@@ -10,6 +10,7 @@ class LazoApp : Application() {
         super.onCreate()
         Notificaciones.crearCanales(this)
         Alarmas.reprogramar(this)
+        mx.lazo.app.alarm.RecordatoriosCitas.reprogramar(this)
         AlertasJobService.programar(this)
     }
 }

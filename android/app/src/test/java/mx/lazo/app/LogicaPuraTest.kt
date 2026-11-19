@@ -143,4 +143,76 @@ class LogicaPuraTest {
         assertEquals(Comando.Desconocido, interpretar("qué bonito día"))
         assertEquals(Comando.Desconocido, interpretar("tomate")) // «tomate» no es «tomé»
     }
+
+    // ---- recordatorios de citas ----
+    private fun cita(id: String, fecha: String, hora: String, lugar: String = "Hospital General", transporte: String = "") =
+        mx.lazo.app.data.Cita(id, "Oftalmología", "", lugar, fecha, hora, "", transporte)
+
+    @Test fun citaAvisaLaVisperaALas20YDosHorasAntes() {
+        val plan = planDeRecordatoriosCitas(listOf(cita("c1", "2026-11-20", "09:30")), LocalDateTime.parse("2026-11-18T10:00:00"))
+        assertEquals(listOf(MomentoCita.VISPERA, MomentoCita.DOS_HORAS), plan.map { it.momento })
+        assertEquals(LocalDateTime.parse("2026-11-19T20:00:00").aMillis(), plan[0].millis)
+        assertEquals(LocalDateTime.parse("2026-11-20T07:30:00").aMillis(), plan[1].millis)
+        assertNotEquals(plan[0].codigo, plan[1].codigo)
+        assertEquals(plan, planDeRecordatoriosCitas(listOf(cita("c1", "2026-11-20", "09:30")), LocalDateTime.parse("2026-11-18T10:00:00"))) // estable
+    }
+
+    @Test fun loQueYaPasoNoSeProgramaYLasCitasPasadasNoAvisan() {
+        val citas = listOf(cita("vieja", "2026-11-17", "09:00"), cita("hoy", "2026-11-18", "13:00"), cita("mañana", "2026-11-19", "09:00"))
+        val plan = planDeRecordatoriosCitas(citas, LocalDateTime.parse("2026-11-18T21:00:00"))
+        // «hoy» ya pasó; de «mañana» ya pasó la víspera (20:00) y solo falta el de 2 horas antes
+        assertEquals(listOf("mañana" to MomentoCita.DOS_HORAS), plan.map { it.citaId to it.momento })
+        assertTrue(planDeRecordatoriosCitas(listOf(cita("x", "fecha-rara", "9")), LocalDateTime.parse("2026-11-18T08:00:00")).isEmpty()) // datos malos no truenan
+    }
+
+    @Test fun citaDeMadrugadaNoRepiteElAvisoDeLaVispera() {
+        // Cita a las 21:30: la víspera (20:00 del día anterior) y 2 horas antes (19:30 del mismo día) son avisos distintos
+        assertEquals(2, planDeRecordatoriosCitas(listOf(cita("n", "2026-11-20", "21:30")), LocalDateTime.parse("2026-11-18T08:00:00")).size)
+        // Cita a las 00:30: 2 horas antes cae a las 22:30 del día anterior, después de la víspera; ambos siguen en orden
+        val m = planDeRecordatoriosCitas(listOf(cita("m", "2026-11-20", "00:30")), LocalDateTime.parse("2026-11-18T08:00:00"))
+        assertEquals(listOf(MomentoCita.VISPERA, MomentoCita.DOS_HORAS), m.map { it.momento })
+        assertTrue(m[0].millis < m[1].millis)
+    }
+
+    @Test fun recordatoriosDeCitasTienenTope() {
+        val muchas = (1..30).map { cita("c$it", LocalDate.parse("2026-11-20").plusDays(it.toLong()).toString(), "10:00") }
+        assertEquals(MAX_RECORDATORIOS_CITA, planDeRecordatoriosCitas(muchas, LocalDateTime.parse("2026-11-18T08:00:00")).size)
+    }
+
+    @Test fun fraseDelRecordatorioDeCita() {
+        val p = planDeRecordatoriosCitas(listOf(cita("c1", "2026-11-20", "09:30", transporte = "Taxi adaptado")), LocalDateTime.parse("2026-11-18T10:00:00"))
+        assertEquals("Mañana tienes cita con Oftalmología a las 9:30 de la mañana, en Hospital General. Cómo llegarás: Taxi adaptado.", fraseRecordatorioCita(p[0]))
+        assertEquals("En 2 horas tienes cita con Oftalmología, a las 9:30 de la mañana, en Hospital General. Cómo llegarás: Taxi adaptado.", fraseRecordatorioCita(p[1]))
+        assertEquals("Tu cita es en 2 horas", tituloRecordatorioCita(p[1]))
+    }
+
+    // ---- «Necesito ayuda» ----
+    @Test fun textosDeAyuda() {
+        assertEquals("Avisé a 1 cuidador. Si es una emergencia, llama al 911.", textoAyudaEnviada(1))
+        assertEquals("Avisé a 3 cuidadores. Si es una emergencia, llama al 911.", textoAyudaEnviada(3))
+        assertEquals("Todavía no tienes cuidadores: invita a alguien en Más → Mi círculo.", textoAyudaEnviada(0))
+        assertTrue(textoAyudaFallida(true).contains("no hay conexión") && textoAyudaFallida(true).contains("911"))
+        assertTrue(textoAyudaFallida(false).contains("911"))
+    }
+
+    @Test fun losPedidosDeAyudaVanPrimeroEnLosAvisos() {
+        fun a(id: String, tipo: String, sev: String, fecha: String) = mx.lazo.app.data.Alerta(id, tipo, sev, fecha, id, "", false)
+        val lista = listOf(a("info", "cita-proxima", "info", "2026-11-18T10:00:00-06:00"), a("dosis", "dosis-atrasada", "alta", "2026-11-18T12:00:00-06:00"),
+            a("ayuda1", "ayuda", "alta", "2026-11-18T09:00:00-06:00"), a("omit", "dosis-omitida", "media", "2026-11-18T08:00:00-06:00"), a("ayuda2", "ayuda", "alta", "2026-11-18T11:00:00-06:00"))
+        assertEquals(listOf("ayuda2", "ayuda1", "dosis", "omit", "info"), ordenarAlertas(lista).map { it.id })
+    }
+
+    // ---- acciones rápidas de cada toma ----
+    @Test fun accionesDeTomaSegunSuEstado() {
+        assertEquals(listOf("Ya la tomé", "Posponer 10 minutos", "Omitir esta toma"), accionesToma(Estado.ATRASADA).map { it.texto })
+        assertEquals(listOf("Ya la tomé", "Posponer 10 minutos", "Omitir esta toma"), accionesToma(Estado.PENDIENTE).map { it.texto })
+        assertEquals(10, accionesToma(Estado.AHORA)[1].minutos)
+        assertEquals(listOf(Estado.PENDIENTE), accionesToma(Estado.TOMADA).map { it.estado }) // deshacer
+        assertEquals(listOf("Deshacer"), accionesToma(Estado.OMITIDA).map { it.texto })
+    }
+
+    @Test fun ultimaLecturaRaraNoTruena() {
+        assertEquals("Última lectura: mié 18 nov 8:00 am", mx.lazo.app.ui.textoUltimaLectura("2026-11-18T08:00:00-06:00"))
+        assertNull(mx.lazo.app.ui.textoUltimaLectura("2026-11-18"))
+    }
 }

@@ -9,6 +9,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Notificaciones.crearCanales(context)
         Alarmas.reprogramar(context)
+        RecordatoriosCitas.reprogramar(context)
         AlertasJobService.programar(context)
     }
 }

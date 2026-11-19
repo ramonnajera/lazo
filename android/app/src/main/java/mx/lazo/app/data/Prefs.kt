@@ -59,6 +59,8 @@ class Prefs(private val sp: SharedPreferences) {
     // ---- alarmas programadas (para poder cancelarlas) y alertas del cuidador ya notificadas ----
     fun programadas(): Set<Int> = sp.getStringSet("programadas", emptySet())!!.mapNotNull { it.toIntOrNull() }.toSet()
     fun guardarProgramadas(codigos: Set<Int>) = sp.edit().putStringSet("programadas", codigos.map { it.toString() }.toSet()).apply()
+    fun programadasCitas(): Set<Int> = sp.getStringSet("programadasCitas", emptySet())!!.mapNotNull { it.toIntOrNull() }.toSet()
+    fun guardarProgramadasCitas(codigos: Set<Int>) = sp.edit().putStringSet("programadasCitas", codigos.map { it.toString() }.toSet()).apply()
     fun notificadas(): Set<String> = sp.getStringSet("notificadas", emptySet())!!.toSet()
     fun marcarNotificada(id: String) = sp.edit().putStringSet("notificadas", (notificadas() + id).toList().takeLast(200).toSet()).apply()
 
