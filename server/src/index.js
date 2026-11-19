@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // index.js — arranca el servidor de Lazo.
 //   LAZO_PORT (18800) · LAZO_HOST (127.0.0.1; usa 0.0.0.0 o la IP de Tailscale para abrirlo a tus dispositivos)
-//   LAZO_DATA (./data/lazo.json)
+//   LAZO_DATA (./data/lazo.json) · LAZO_MAX_HOGARES (200)
 
 const http = require('http');
 const path = require('path');
@@ -11,7 +11,9 @@ const PORT = Number(process.env.LAZO_PORT || 18800);
 const HOST = process.env.LAZO_HOST || '127.0.0.1';
 const DATA = process.env.LAZO_DATA || path.join(__dirname, '..', 'data', 'lazo.json');
 
-const app = createApp({ dataFile: DATA });
+// LAZO_MAX_HOGARES: cuántas personas admite este servidor (por omisión 200; con 1, el servidor es de una sola persona)
+const MAX_HOGARES = Number(process.env.LAZO_MAX_HOGARES) || 200;
+const app = createApp({ dataFile: DATA, maxHogares: MAX_HOGARES });
 const server = http.createServer(app.handler);
 server.listen(PORT, HOST, () => console.log(`[lazo] escuchando en http://${HOST}:${PORT} (datos: ${DATA})`));
 
