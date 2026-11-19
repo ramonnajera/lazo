@@ -1,10 +1,5 @@
 package mx.lazo.app.ui
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
-import android.speech.RecognizerIntent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,29 +16,15 @@ import mx.lazo.app.data.Dosis
 import mx.lazo.app.data.Estado
 import mx.lazo.app.domain.*
 
-/** Intenta abrir el reconocimiento de voz del teléfono; devuelve lo que se entendió. */
 @Composable
-fun rememberEscucha(vm: AppViewModel): () -> Unit {
-    val lanzador = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
-        r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let(vm::procesarVoz)
-    }
-    return {
-        val i = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-            .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-MX").putExtra(RecognizerIntent.EXTRA_PROMPT, "Dime qué necesitas")
-        try { lanzador.launch(i) } catch (e: ActivityNotFoundException) { vm.avisar("Este teléfono no tiene reconocimiento de voz.") }
-    }
-}
-
-@Composable
-fun PantallaHoy(vm: AppViewModel, ui: Ui, escuchar: () -> Unit, abrir: (Pantalla) -> Unit) {
+fun PantallaHoy(vm: AppViewModel, ui: Ui, abrir: (Pantalla) -> Unit) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Titulo("Hola, ${ui.nombre.substringBefore(' ')}")
             if (ui.hoy.isNotEmpty()) Cuerpo("Hoy es ${fechaLarga(ui.hoy)}", secundario = true)
         }
         item { TarjetaSiguiente(vm, ui.proxima, ui.hoy) }
-        item { BotonGrande("Hablar con Lazo", escuchar, icono = Icons.Filled.Mic, tono = Tono.NEUTRO, descripcion = "Hablar con Lazo. Puedes decir: ya la tomé, qué sigue, o mis citas.") }
+        item { BotonGrande("Hablar con Lazo", { abrir(Pantalla.Chat) }, icono = Icons.Filled.Mic, tono = Tono.NEUTRO, descripcion = "Hablar con Lazo. Puedes decir: ya la tomé, qué sigue, o mis citas.") }
         item { BotonGrande("Leer mi día en voz alta", { vm.hablar(fraseHoy(ui.tomas, ui.hoy) + " " + fraseCitas(ui.citas, ui.hoy)) }, icono = Icons.Filled.VolumeUp, tono = Tono.NEUTRO) }
         if (ui.tomas.isNotEmpty()) item { Subtitulo("Tus tomas de hoy") }
         else item { Cuerpo("Hoy no tienes tomas programadas.", secundario = true) }

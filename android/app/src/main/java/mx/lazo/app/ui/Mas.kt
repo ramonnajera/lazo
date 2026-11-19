@@ -172,7 +172,7 @@ fun PantallaConexion(vm: AppViewModel, ui: Ui) {
 fun PantallaAyuda(vm: AppViewModel) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Titulo("Qué puedo decirle a Lazo") }
-        item { Cuerpo("En «Hoy», pulsa «Hablar con Lazo» y di una de estas frases:") }
+        item { Cuerpo("En «Hoy», pulsa «Hablar con Lazo», pulsa el micrófono (o escribe) y di una de estas frases:") }
         for (f in listOf("«Ya la tomé»", "«Pospón diez minutos»", "«Omitir»", "«Qué sigue»", "«Qué tengo hoy»", "«Mis citas»", "«Convocatorias»")) item { Tarjeta { Text(f, style = MaterialTheme.typography.titleLarge, color = LocalPaleta.current.texto) } }
         item { BotonGrande("Leer en voz alta", { vm.hablar(AYUDA_VOZ) }, icono = Icons.Filled.VolumeUp, tono = Tono.NEUTRO) }
     }

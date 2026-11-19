@@ -39,6 +39,12 @@ class LazoApi(base: String, private val token: String? = null) {
     suspend fun vincularDispositivo(codigo: String, nombre: String) =
         send("POST", "/perfil/vincular/unirse", JSONObject().put("codigo", codigo.trim()).put("nombre", nombre))
 
+    /** Orden escrita: «¿qué sigue?», «ya la tomé»… Responde {reply, accion}. */
+    suspend fun vozTexto(texto: String) = send("POST", "/voz", JSONObject().put("texto", texto))
+
+    /** Orden hablada: el servidor transcribe el audio y responde {transcripcion, reply, accion}. */
+    suspend fun vozAudio(audio: ByteArray, mime: String = "audio/mp4") = send("POST", "/voz/audio", crudo = audio, tipo = mime, timeoutMs = 45_000)
+
     suspend fun perfil() = get("/perfil")
     suspend fun medicamentos() = get("/medicamentos")
     suspend fun tomas(fecha: String? = null) = get(if (fecha == null) "/tomas" else "/tomas?fecha=$fecha")
@@ -69,7 +75,7 @@ class LazoApi(base: String, private val token: String? = null) {
 
     private suspend fun get(path: String) = send("GET", path)
 
-    private suspend fun send(method: String, path: String, body: JSONObject? = null, timeoutMs: Int = 15_000): JSONObject = withContext(Dispatchers.IO) {
+    private suspend fun send(method: String, path: String, body: JSONObject? = null, timeoutMs: Int = 15_000, crudo: ByteArray? = null, tipo: String? = null): JSONObject = withContext(Dispatchers.IO) {
         val conn = try {
             (URL(base + path).openConnection() as HttpURLConnection)
         } catch (e: IOException) {
@@ -81,7 +87,12 @@ class LazoApi(base: String, private val token: String? = null) {
             conn.readTimeout = timeoutMs
             conn.setRequestProperty("Accept", "application/json")
             if (token != null) conn.setRequestProperty("Authorization", "Bearer $token")
-            if (body != null) {
+            if (crudo != null) {
+                conn.doOutput = true
+                conn.setFixedLengthStreamingMode(crudo.size)
+                conn.setRequestProperty("Content-Type", tipo ?: "application/octet-stream")
+                conn.outputStream.use { it.write(crudo) }
+            } else if (body != null) {
                 conn.doOutput = true
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 conn.outputStream.use { it.write(body.toString().toByteArray()) }

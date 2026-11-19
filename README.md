@@ -31,10 +31,10 @@ Luego instala el APK (`android/app/build/outputs/apk/release/`) y abre Lazo. Gu�
 Es el requisito central, no un extra: contraste ≥ 7:1, áreas táctiles ≥ 64 dp, TalkBack en cada elemento, estados con texto y signo (nunca solo color), letra hasta el doble y un menú de botones grandes cuando la letra crece. Detalle y pruebas: [`docs/ACCESIBILIDAD.md`](docs/ACCESIBILIDAD.md).
 
 ## Privacidad
-Sin cuentas, sin analítica, sin inteligencia artificial de terceros. Cada persona tiene su propio espacio aislado dentro del servidor (nadie ve ni toca los datos de otra), con el archivo de datos en modo privado y los tokens guardados solo como huella. Quien quiera tener el suyo —un municipio, una asociación— lo monta con un comando y la app admite cambiar de servidor en «Opciones avanzadas». El dictado y las órdenes por voz de Windows se procesan en la computadora. Lo único que se descarga de internet es la página pública de convocatorias.
+Sin cuentas ni analítica. Única excepción de terceros: cuando hablas con Lazo desde el teléfono, el audio se envía al servidor y de ahí a Whisper (Groq) solo para convertirlo en texto; no se guarda en ningún lado. Quien no quiera usarlo puede escribir sus órdenes o tocar las frases sugeridas, y el dictado de Windows es 100 % local. Cada persona tiene su propio espacio aislado dentro del servidor (nadie ve ni toca los datos de otra), con el archivo de datos en modo privado y los tokens guardados solo como huella. Quien quiera tener el suyo —un municipio, una asociación— lo monta con un comando y la app admite cambiar de servidor en «Opciones avanzadas». El dictado y las órdenes por voz de Windows se procesan en la computadora. Lo único que se descarga de internet es la página pública de convocatorias.
 
 ## Pruebas
-`server`: 67 (incluye aislamiento entre hogares y migración de datos) · `android`: 44 (incluye pantallas con capturas y una prueba contra el servidor real) · `desktop`: 139 (TypeScript) + 84 (Rust: 45 de la app y 39 del núcleo).
+`server`: 72 (incluye aislamiento entre hogares, migración de datos y órdenes por audio) · `android`: 49 (incluye pantallas con capturas y una prueba contra el servidor real) · `desktop`: 139 (TypeScript) + 84 (Rust: 45 de la app y 39 del núcleo).
 
 ## Licencia
 MIT. Ver [`LICENSE`](LICENSE) y [`desktop/THIRD_PARTY.md`](desktop/THIRD_PARTY.md).

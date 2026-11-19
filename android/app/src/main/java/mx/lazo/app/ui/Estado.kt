@@ -18,6 +18,7 @@ import mx.lazo.app.alarm.Notificaciones
 import mx.lazo.app.alarm.Sincronizacion
 import mx.lazo.app.data.*
 import mx.lazo.app.domain.*
+import mx.lazo.app.speech.Grabadora
 import mx.lazo.app.speech.Voz
 import org.json.JSONArray
 import org.json.JSONObject
@@ -29,9 +30,13 @@ data class Ui(
     val resumen: Resumen? = null, val convocatorias: ListaConvocatorias? = null, val cuidadores: List<Cuidador> = emptyList(), val codigo: String? = null, val codigoVinculo: String? = null, val dispositivos: List<Cuidador> = emptyList(),
     val cargando: Boolean = false, val mensaje: String? = null, val sinConexion: Boolean = false, val sinEnviar: Int = 0, val destino: String? = null,
     val escala: Float = 1.25f, val altoContraste: Boolean = false, val voz: Boolean = true, val velocidad: Float = 0.9f,
+    val chat: List<MensajeChat> = emptyList(), val chatOcupado: Boolean = false, val grabando: Boolean = false,
 ) {
     val conectado get() = rol != null
 }
+
+/** Un mensaje de la conversación con Lazo. `delUsuario` distingue quién habla sin depender solo del color. */
+data class MensajeChat(val delUsuario: Boolean, val texto: String, val error: Boolean = false, val audio: Boolean = false)
 
 /** Un solo lugar para el estado de la app: abre al instante con lo guardado, refresca, y no pierde nada sin conexión. */
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
@@ -40,6 +45,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val _ui = MutableStateFlow(Ui())
     val ui: StateFlow<Ui> = _ui.asStateFlow()
     private val voz by lazy { Voz(app, { prefs.velocidadVoz }) }
+    private val grabadora by lazy { Grabadora(app) }
 
     init {
         _ui.update { it.copy(rol = if (prefs.conectado) prefs.rol else null, nombre = prefs.nombre, hoy = hoyIso(), escala = prefs.escalaTexto, altoContraste = prefs.altoContraste, voz = prefs.voz, velocidad = prefs.velocidadVoz) }
@@ -242,6 +248,64 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---------- conversación con Lazo (texto y audio, como el chat de Alice) ----------
+    private fun mensajeChat(m: MensajeChat) = _ui.update { it.copy(chat = (it.chat + m).takeLast(60)) }
+
+    /** Respuesta del servidor a una orden: se muestra, se lee en voz alta y, si cambió algo, se refresca la pantalla. */
+    private fun alResponder(r: JSONObject) {
+        val reply = r.optString("reply")
+        mensajeChat(MensajeChat(false, reply))
+        if (prefs.voz) hablar(reply, forzar = false)
+        val accion = r.optJSONObject("accion")
+        if (accion?.optBoolean("hecho") == true) {
+            if (accion.optString("tipo") == "convocatorias") _ui.update { it.copy(destino = "convocatorias") }
+            refrescar()
+        }
+    }
+
+    private fun falloChat(e: ApiException) = mensajeChat(MensajeChat(false, e.message ?: "No pude conectar con el servidor.", error = true))
+
+    fun enviarAlChat(texto: String) {
+        val t = texto.trim()
+        if (t.isEmpty() || _ui.value.chatOcupado) return
+        mensajeChat(MensajeChat(true, t))
+        _ui.update { it.copy(chatOcupado = true) }
+        viewModelScope.launch {
+            try { alResponder(api().vozTexto(t)) } catch (e: ApiException) { falloChat(e) }
+            _ui.update { it.copy(chatOcupado = false) }
+        }
+    }
+
+    /** Empieza a grabar (la pantalla ya pidió el permiso del micrófono). */
+    fun empezarGrabacion() {
+        if (_ui.value.chatOcupado || _ui.value.grabando) return
+        voz.detener()
+        if (grabadora.empezar()) _ui.update { it.copy(grabando = true) }
+        else avisar("No pude usar el micrófono. Revisa que ninguna otra app lo esté usando.")
+    }
+
+    fun terminarGrabacion() {
+        if (!_ui.value.grabando) return
+        _ui.update { it.copy(grabando = false) }
+        val archivo = grabadora.terminar() ?: return avisar("Fue muy corto. Pulsa el micrófono, habla y vuelve a pulsarlo.")
+        _ui.update { it.copy(chatOcupado = true) }
+        viewModelScope.launch {
+            try {
+                val bytes = withContext(Dispatchers.IO) { archivo.readBytes().also { archivo.delete() } }
+                val r = api().vozAudio(bytes)
+                val dicho = r.optString("transcripcion")
+                if (dicho.isNotBlank()) mensajeChat(MensajeChat(true, dicho, audio = true))
+                alResponder(r)
+            } catch (e: ApiException) {
+                runCatching { archivo.delete() }
+                falloChat(e)
+            }
+            _ui.update { it.copy(chatOcupado = false) }
+        }
+    }
+
+    fun cancelarGrabacion() { if (_ui.value.grabando) { grabadora.cancelar(); _ui.update { it.copy(grabando = false) } } }
+
     // ---------- datos de la persona ----------
     private fun accion(exito: String? = null, bloque: suspend () -> Unit) {
         viewModelScope.launch {
@@ -291,5 +355,5 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun limpiarMensaje() = _ui.update { it.copy(mensaje = null) }
     fun consumirDestino() = _ui.update { it.copy(destino = null) }
 
-    override fun onCleared() { runCatching { voz.cerrar() } }
+    override fun onCleared() { runCatching { voz.cerrar() }; runCatching { grabadora.cancelar() } }
 }

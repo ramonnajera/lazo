@@ -10,9 +10,12 @@ const R = require('./resumen');
 const C = require('./convocatorias');
 const X = require('./textos');
 const { interpretar, AYUDA_VOZ } = require('./comandos');
+const Tr = require('./transcribir');
 
 const VERSION = '1.0.0';
 const MAX_BODY = 64 * 1024;
+const MAX_AUDIO = 10 * 1024 * 1024;
+const MIMES_AUDIO = /^audio\/(mp4|m4a|aac|mpeg|ogg|webm|wav|x-wav|3gpp)$/;
 const DISCAPACIDADES = ['visual', 'motriz', 'ambas', 'otra'];
 const ESTADOS_TOMA = ['tomada', 'omitida', 'pospuesta', 'pendiente'];
 
@@ -116,7 +119,7 @@ function validarCita(b, previo) {
 
 // ---------- aplicación ----------
 
-function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.descargar, convUrl = C.PAGE_URL, maxHogares = 200 } = {}) {
+function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.descargar, convUrl = C.PAGE_URL, maxHogares = 200, transcribir = null } = {}) {
   const store = new Store(dataFile);
   const ahora = () => T.local(now());
   let ultimaActualizacionConv = 0;
@@ -125,7 +128,8 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
   const MAX_ALTAS_POR_HORA = 30;
 
   const rutas = [];
-  const ruta = (method, re, acceso, fn) => rutas.push({ method, re, acceso, fn });
+  const ruta = (method, re, acceso, fn, opciones = {}) => rutas.push({ method, re, acceso, fn, ...opciones });
+  const audiosPorToken = new Map(); // id de token → marcas de tiempo (límite de audios por minuto)
 
   const hogares = () => Object.values(store.data.hogares);
 
@@ -363,10 +367,7 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
   ruta('POST', /^\/tomas$/, 'persona', ({ h, d, body }) => aplicarToma(h, d, body));
 
   // Órdenes en español, por voz o por texto (la isla de Windows y el chat las envían aquí).
-  ruta('POST', /^\/voz$/, 'persona', ({ h, d, body }) => {
-    const texto = typeof body.texto === 'string' ? body.texto.trim() : '';
-    if (!texto) throw bad('texto es obligatorio');
-    if (texto.length > 300) throw bad('texto admite hasta 300 caracteres');
+  function ejecutarOrden(h, d, texto) {
     const n = ahora();
     const tolerancia = (d.perfil && d.perfil.tolerancia) || S.TOLERANCIA_MIN;
     const hoy = S.dayView(d, n.date, n, tolerancia);
@@ -405,7 +406,35 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
       default:
         return { reply: 'No te entendí. Di ayuda para saber qué puedes pedirme.', accion: { tipo: 'desconocido', hecho: false } };
     }
+  }
+
+  ruta('POST', /^\/voz$/, 'persona', ({ h, d, body }) => {
+    const texto = typeof body.texto === 'string' ? body.texto.trim() : '';
+    if (!texto) throw bad('texto es obligatorio');
+    if (texto.length > 300) throw bad('texto admite hasta 300 caracteres');
+    return ejecutarOrden(h, d, texto);
   });
+
+  // Audio (m4a, ogg, wav…) → texto con Whisper → la misma orden que /voz. El audio no se guarda.
+  ruta('POST', /^\/voz\/audio$/, 'persona', async ({ h, d, auth, audio, mime }) => {
+    const t = now().getTime();
+    const marcas = (audiosPorToken.get(auth.id) || []).filter((x) => t - x < 60000);
+    if (marcas.length >= 12) throw new HttpError(429, 'demasiados audios seguidos: espera un momento');
+    marcas.push(t);
+    audiosPorToken.set(auth.id, marcas);
+    const clave = process.env.GROQ_API_KEY;
+    const transcribe = transcribir || (clave ? Tr.groq(clave) : null);
+    if (!transcribe) throw new HttpError(503, 'el reconocimiento de voz no está configurado en este servidor');
+    let texto;
+    try {
+      texto = (await transcribe(audio, mime)).trim();
+    } catch (e) {
+      console.error('[lazo] transcripción:', e.message);
+      throw new HttpError(502, 'No pude entender el audio. Intenta de nuevo o escribe tu orden.');
+    }
+    if (!texto) return { transcripcion: '', reply: 'No te escuché. Acércate al micrófono e intenta de nuevo.', accion: { tipo: 'desconocido', hecho: false } };
+    return { transcripcion: texto.slice(0, 300), ...ejecutarOrden(h, d, texto.slice(0, 300)) };
+  }, { crudo: true });
 
   ruta('POST', /^\/citas$/, 'persona', ({ h, body, res }) => {
     const c = { id: newId(), ...validarCita(body, null) };
@@ -527,6 +556,17 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
     }
   }
 
+  async function leerCrudo(req) {
+    const partes = [];
+    let total = 0;
+    for await (const c of req) {
+      total += c.length;
+      if (total > MAX_AUDIO) throw new HttpError(413, 'el audio es demasiado grande (máximo 10 MB)');
+      partes.push(c);
+    }
+    return Buffer.concat(partes);
+  }
+
   async function handler(req, res) {
     const url = new URL(req.url, 'http://x');
     const send = (status, obj) => {
@@ -550,8 +590,17 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
         hogar = hallado.h;
         if (r.acceso === 'persona' && auth.rol !== 'persona') throw new HttpError(403, 'el cuidador solo puede consultar');
       }
-      const body = req.method === 'GET' || req.method === 'DELETE' ? {} : await leerCuerpo(req);
-      const ctx = { h: hogar, d: hogar ? vista(hogar) : null, body, query: url.searchParams, auth, m: url.pathname.match(r.re), res: { status: 200 } };
+      let body = {};
+      let audio = null;
+      let mime = '';
+      if (r.crudo) {
+        mime = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+        if (!MIMES_AUDIO.test(mime)) throw new HttpError(415, 'el cuerpo debe ser un audio (m4a, ogg, wav…)');
+        if (Number(req.headers['content-length'] || 0) > MAX_AUDIO) throw new HttpError(413, 'el audio es demasiado grande (máximo 10 MB)');
+        audio = await leerCrudo(req);
+        if (audio.length < 1000) throw bad('el audio está vacío o es demasiado corto');
+      } else if (req.method !== 'GET' && req.method !== 'DELETE') body = await leerCuerpo(req);
+      const ctx = { audio, mime, h: hogar, d: hogar ? vista(hogar) : null, body, query: url.searchParams, auth, m: url.pathname.match(r.re), res: { status: 200 } };
       const out = await r.fn(ctx);
       send(ctx.res.status, out);
     } catch (e) {

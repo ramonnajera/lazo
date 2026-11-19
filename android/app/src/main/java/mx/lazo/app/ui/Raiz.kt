@@ -24,6 +24,7 @@ import mx.lazo.app.data.TipoMedicion
 
 sealed interface Pantalla {
     data object Hoy : Pantalla
+    data object Chat : Pantalla
     data object Medicinas : Pantalla
     data object Citas : Pantalla
     data object Seguimiento : Pantalla
@@ -55,17 +56,17 @@ private val PESTANAS_CUIDADOR = listOf(
 )
 
 @Composable
-fun LazoRaiz(vm: AppViewModel, escuchar: () -> Unit) {
+fun LazoRaiz(vm: AppViewModel) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     LazoTema(ui.altoContraste, ui.escala) {
         Surface(color = LocalPaleta.current.fondo, modifier = Modifier.fillMaxSize()) {
-            if (!ui.conectado) Bienvenida(vm, ui) else Principal(vm, ui, escuchar)
+            if (!ui.conectado) Bienvenida(vm, ui) else Principal(vm, ui)
         }
     }
 }
 
 @Composable
-fun Principal(vm: AppViewModel, ui: Ui, escuchar: () -> Unit) {
+fun Principal(vm: AppViewModel, ui: Ui) {
     val pestanas = if (ui.rol == Rol.CUIDADOR) PESTANAS_CUIDADOR else PESTANAS_PERSONA
     val pila = remember(ui.rol) { mutableStateListOf<Pantalla>(pestanas.first().pantalla) }
     val actual = pila.last()
@@ -123,7 +124,8 @@ fun Principal(vm: AppViewModel, ui: Ui, escuchar: () -> Unit) {
             MensajeVivo(ui.mensaje, vm::limpiarMensaje)
             Box(Modifier.weight(1f)) {
                 if (menu && grande) MenuGrande(pestanas, actual) { abrir(it) } else when (val p = actual) {
-                    Pantalla.Hoy -> PantallaHoy(vm, ui, escuchar, ::abrir)
+                    Pantalla.Hoy -> PantallaHoy(vm, ui, ::abrir)
+                    Pantalla.Chat -> PantallaChat(vm, ui)
                     Pantalla.Medicinas -> PantallaMedicinas(ui, ::abrir)
                     is Pantalla.FormMed -> FormMedicamento(vm, ui, p.id) { pila.removeAt(pila.lastIndex) }
                     Pantalla.Citas -> PantallaCitas(ui, ::abrir)

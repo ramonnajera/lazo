@@ -54,6 +54,13 @@ class PantallasTest {
         escala = 1.25f,
     )
 
+    private val chat = ui.copy(chat = listOf(
+        MensajeChat(true, "¿Qué tengo hoy?", audio = true),
+        MensajeChat(false, "Hoy tienes 3 tomas: ya tomaste 1 y faltan 2. La siguiente es Losartán, 50 mg, hoy a las 12 del día."),
+        MensajeChat(true, "Ya la tomé"),
+        MensajeChat(false, "No pude conectar con el servidor (UnknownHostException). Revisa tu conexión a internet.", error = true),
+    ))
+
     @Before fun preparar() { Prefs.de(app).cerrarSesion(); vm = AppViewModel(app) }
 
     private fun mostrar(alto: Boolean = false, escala: Float = 1.25f, contenido: @Composable () -> Unit) = rule.setContent { LazoTema(alto, escala) { androidx.compose.material3.Surface(color = LocalPaleta.current.fondo) { contenido() } } }
@@ -64,7 +71,7 @@ class PantallasTest {
 
     // ---------- comportamiento ----------
     @Test fun yaLaTomeConfirmaLaTomaYLaGuardaLocalmente() {
-        mostrar { PantallaHoy(vm, ui, {}, {}) }
+        mostrar { PantallaHoy(vm, ui, {}) }
         rule.onNodeWithText("Ya la tomé").assertIsDisplayed().assertHasClickAction()
         rule.onNodeWithText("Ya la tomé").performClick()
         rule.waitForIdle()
@@ -72,7 +79,7 @@ class PantallasTest {
     }
 
     @Test fun losBotonesGrandesTienenAlMenos64dpDeAlto() {
-        mostrar { PantallaHoy(vm, ui, {}, {}) }
+        mostrar { PantallaHoy(vm, ui, {}) }
         val altoMinimoPx = with(rule.density) { 64.dp.toPx() }
         for (texto in listOf("Ya la tomé", "Hablar con Lazo", "Leer mi día en voz alta")) {
             val h = rule.onNodeWithText(texto).fetchSemanticsNode().size.height
@@ -81,21 +88,21 @@ class PantallasTest {
     }
 
     @Test fun talkBackLeeLaTomaSiguienteDeUnaSolaVez() {
-        mostrar { PantallaHoy(vm, ui, {}, {}) }
+        mostrar { PantallaHoy(vm, ui, {}) }
         rule.onNode(hasContentDescription("Siguiente toma", substring = true)).assertExists()
         val d = rule.onNode(hasContentDescription("Siguiente toma", substring = true)).fetchSemanticsNode().config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription)!!.first()
         assertTrue(d, d.contains("Losartán") && d.contains("12 del día") && d.contains("Atrasada"))
     }
 
     @Test fun losEstadosSiempreTienenTextoNoSoloColor() {
-        mostrar { PantallaHoy(vm, ui, {}, {}) }
+        mostrar { PantallaHoy(vm, ui, {}) }
         rule.onAllNodesWithText("Atrasada").assertCountEquals(2) // en la tarjeta grande y en la lista del día
         rule.onNodeWithText("Tomada a las 8:05 am").assertExists()
         rule.onNodeWithText("Pendiente").assertExists()
     }
 
     @Test fun losTresBotonesDeAccionEstanApiladosYTienenElMismoAncho() {
-        mostrar(false, 2f) { PantallaHoy(vm, ui, {}, {}) }
+        mostrar(false, 2f) { PantallaHoy(vm, ui, {}) }
         val nodos = listOf("Ya la tomé", "Pospón 10 minutos", "Omitir esta toma").map { rule.onNodeWithText(it).fetchSemanticsNode().boundsInRoot }
         assertEquals("los tres botones deben medir lo mismo de ancho: $nodos", 1, nodos.map { it.width }.toSet().size)
         assertTrue("deben ir uno debajo de otro: $nodos", nodos.zipWithNext().all { (a, b) -> b.top >= a.bottom })
@@ -103,13 +110,13 @@ class PantallasTest {
 
     @Test fun conLetraNormalHayBarraConCincoDestinosYSinMenu() {
         // Que las etiquetas no se corten se revisa a ojo en las capturas (la métrica de desborde de Robolectric no es fiable)
-        mostrar(false, 1.25f) { Principal(vm, ui, {}) }
+        mostrar(false, 1.25f) { Principal(vm, ui) }
         for (t in listOf("Hoy", "Medicinas", "Citas", "Salud", "Más")) rule.onNodeWithText(t).assertExists()
         rule.onAllNodesWithText("Menú", substring = true).assertCountEquals(0)
     }
 
     @Test fun conLetraMuyGrandeLaBarraSeConvierteEnUnMenuDeBotones() {
-        mostrar(false, 2f) { Principal(vm, ui, {}) }
+        mostrar(false, 2f) { Principal(vm, ui) }
         rule.onNodeWithText("Menú · Hoy").assertExists().assertHasClickAction()
         rule.onAllNodesWithText("Medicinas").assertCountEquals(0) // no hay barra apretada
         rule.onNodeWithText("Menú · Hoy").performClick()
@@ -121,12 +128,12 @@ class PantallasTest {
     }
 
     @Test fun deshacerSoloApareceEnLoQueYaSeResolvio() {
-        mostrar { PantallaHoy(vm, ui, {}, {}) }
+        mostrar { PantallaHoy(vm, ui, {}) }
         rule.onAllNodesWithText("Deshacer").assertCountEquals(1)
     }
 
     @Test fun sinTomasPendientesLoDiceEnVozClara() {
-        mostrar { PantallaHoy(vm, ui.copy(proxima = null, tomas = emptyList()), {}, {}) }
+        mostrar { PantallaHoy(vm, ui.copy(proxima = null, tomas = emptyList()), {}) }
         rule.onNodeWithText("Todo al día").assertExists()
         rule.onNodeWithText("Hoy no tienes tomas programadas.").assertExists()
     }
@@ -163,15 +170,49 @@ class PantallasTest {
         assertTrue(generateSequence(n) { it.parent }.any { it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.LiveRegion) })
     }
 
+    // ---------- chat con Lazo ----------
+    @Test fun elChatDiceQuienHablaConTextoYParaTalkBack() {
+        mostrar { PantallaChat(vm, chat) }
+        rule.onNodeWithText("Tú (por voz)").assertExists() // lo dictado se distingue de lo escrito
+        rule.onNodeWithContentDescription("Lazo dice: Hoy tienes 3 tomas: ya tomaste 1 y faltan 2. La siguiente es Losartán, 50 mg, hoy a las 12 del día.").assertExists()
+        rule.onNodeWithContentDescription("Tú dice: Ya la tomé").assertExists()
+        assertTrue(rule.onAllNodesWithText("Lazo").fetchSemanticsNodes().isNotEmpty()) // etiqueta visible: nunca solo color
+    }
+
+    @Test fun elMicrofonoEsGrandeCambiaDeEstadoConTextoYSeDeshabilitaOcupado() {
+        mostrar { PantallaChat(vm, ui) }
+        val n = rule.onNodeWithText("Pulsa para hablar").assertIsEnabled().fetchSemanticsNode()
+        assertTrue("el micrófono debe medir al menos 64 dp", n.boundsInRoot.height >= 64f * 2f)
+    }
+
+    @Test fun mientrasGrabaElBotonLoDiceConPalabras() {
+        mostrar { PantallaChat(vm, ui.copy(grabando = true)) }
+        rule.onNodeWithText("Te escucho… pulsa para enviar").assertExists()
+    }
+
+    @Test fun lasFrasesSugeridasYElCampoDeTextoEstanSiempreAlAlcance() {
+        mostrar { PantallaChat(vm, ui) }
+        for (f in listOf("¿Qué sigue?", "¿Qué tengo hoy?")) rule.onNodeWithText(f).assertExists()
+        rule.onNodeWithContentDescription("Escribe tu orden para Lazo").assertExists()
+        rule.onNodeWithContentDescription("Enviar mensaje").assertIsNotEnabled() // sin texto no se envía
+    }
+
+    @Test fun elBotonHablarDeHoyAbreElChat() {
+        var destino: Pantalla? = null
+        mostrar { PantallaHoy(vm, ui) { destino = it } }
+        rule.onNodeWithText("Hablar con Lazo").performClick()
+        assertEquals(Pantalla.Chat, destino)
+    }
+
     // ---------- capturas ----------
     @Test fun capturas() {
         val resumen = Resumen("Ana Ejemplo", Discapacidad.AMBAS, tomas[1], 83, listOf(DiaAdherencia("2026-11-16", 3, 3, 0, 0, 0), DiaAdherencia("2026-11-17", 3, 2, 1, 0, 0), DiaAdherencia("2026-11-18", 3, 1, 0, 1, 1)), citas, listOf(TipoMedicion.PRESION to "120/80", TipoMedicion.GLUCOSA to "260 mg/dL"),
             listOf(Alerta("x", "dosis-atrasada", "alta", "", "Sin confirmar: Losartán", "La toma de las 12:00 no se ha confirmado.", false)))
         val pantallas: List<Pair<String, @Composable () -> Unit>> = listOf(
-            "hoy" to { PantallaHoy(vm, ui, {}, {}) }, "medicinas" to { PantallaMedicinas(ui, {}) }, "form_medicina" to { FormMedicamento(vm, ui, "a") {} },
+            "hoy" to { PantallaHoy(vm, ui, {}) }, "medicinas" to { PantallaMedicinas(ui, {}) }, "form_medicina" to { FormMedicamento(vm, ui, "a") {} },
             "citas" to { PantallaCitas(ui, {}) }, "seguimiento" to { PantallaSeguimiento(vm, ui, {}) }, "form_dolor" to { FormMedicion(vm, TipoMedicion.DOLOR) {} },
             "convocatorias" to { PantallaConvocatorias(vm, ui) }, "accesibilidad" to { PantallaAccesibilidad(vm, ui) }, "mas" to { PantallaMas(ui, {}) },
-            "bienvenida" to { Bienvenida(vm, Ui()) },
+            "bienvenida" to { Bienvenida(vm, Ui()) }, "chat" to { PantallaChat(vm, chat) }, "chat_grabando" to { PantallaChat(vm, chat.copy(grabando = true)) },
             "cuidador_resumen" to { PantallaResumen(vm, ui.copy(rol = Rol.CUIDADOR, resumen = resumen)) },
         )
         var actual by androidx.compose.runtime.mutableStateOf<(@Composable () -> Unit)?>(null)
@@ -180,7 +221,7 @@ class PantallasTest {
         rule.setContent { LazoTema(alto, escala) { androidx.compose.material3.Surface(color = LocalPaleta.current.fondo) { actual?.invoke() } } }
         for ((nombre, p) in pantallas) { actual = p; rule.waitForIdle(); foto(nombre) }
         // La misma pantalla principal en alto contraste y con la letra al doble
-        actual = { Principal(vm, ui, {}) }; escala = 1.25f; rule.waitForIdle(); foto("principal_normal")
+        actual = { Principal(vm, ui) }; escala = 1.25f; rule.waitForIdle(); foto("principal_normal")
         escala = 2f; rule.waitForIdle(); foto("principal_letra_doble")
         escala = 1.25f
         alto = true; actual = pantallas[0].second; rule.waitForIdle(); foto("hoy_alto_contraste")

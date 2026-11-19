@@ -9,10 +9,10 @@ const { createApp } = require('../src/app');
 const FIXTURE = fs.readFileSync(path.join(__dirname, 'fixtures', 'convocatorias.html'), 'utf8');
 
 /** Servidor de prueba con reloj que se puede mover. `clock.set('2026-11-18T14:00:00Z')` (UTC; local = UTC-6). */
-async function arrancar({ dataFile = null, html = FIXTURE, maxHogares } = {}) {
+async function arrancar({ dataFile = null, html = FIXTURE, maxHogares, transcribir } = {}) {
   const clock = { t: new Date('2026-11-18T14:00:00Z') }; // 08:00 en Chihuahua
   clock.set = (iso) => { clock.t = new Date(iso); };
-  const app = createApp({ dataFile, now: () => new Date(clock.t), fetchHtml: async () => html, convUrl: 'https://ejemplo.test/convocatorias', ...(maxHogares ? { maxHogares } : {}) });
+  const app = createApp({ dataFile, now: () => new Date(clock.t), fetchHtml: async () => html, convUrl: 'https://ejemplo.test/convocatorias', ...(maxHogares ? { maxHogares } : {}), ...(transcribir ? { transcribir } : {}) });
   const srv = http.createServer(app.handler);
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`;
@@ -21,7 +21,8 @@ async function arrancar({ dataFile = null, html = FIXTURE, maxHogares } = {}) {
     const text = await res.text();
     return { status: res.status, body: text ? JSON.parse(text) : null };
   };
-  return { app, clock, call, close: () => { srv.closeAllConnections(); srv.close(); } };
+  const port = srv.address().port;
+  return { app, clock, call, port, close: () => { srv.closeAllConnections(); srv.close(); } };
 }
 
 /** Servidor ya configurado con una persona y su token. */
@@ -556,4 +557,82 @@ test('un archivo de datos de la versión anterior (una sola persona) se migra si
     assert.deepEqual((await s.call('GET', '/citas', { token: nuevo.body.token })).body.citas, []);
   } finally { s.close(); }
   assert.equal(JSON.parse(fs.readFileSync(f, 'utf8')).version, 2);
+});
+
+// ---------------------------------------------------------------- órdenes por audio (POST /voz/audio)
+
+/** Servidor con una transcripción falsa: devuelve `texto` sin llamar a internet y deja pasar lo que reciba. */
+async function conAudio(texto, extra = {}) {
+  const llamadas = [];
+  const transcribir = async (audio, mime) => { llamadas.push({ bytes: audio.length, mime }); if (extra.falla) throw new Error('groq 500'); return texto; };
+  const s = await conPersona({ transcribir });
+  s.llamadas = llamadas;
+  s.audio = async (bytes = 4000, { mime = 'audio/mp4', token = s.token } = {}) => {
+    const res = await fetch(`http://127.0.0.1:${s.port}/voz/audio`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': mime }, body: Buffer.alloc(bytes, 1) });
+    return { status: res.status, body: await res.json() };
+  };
+  return s;
+}
+
+test('audio: se transcribe, se ejecuta la orden y se devuelve lo que se entendió y la respuesta', async () => {
+  const s = await conAudio('ya la tomé');
+  try {
+    await s.p('POST', '/medicamentos', { nombre: 'Metformina', dosis: '850 mg', horarios: ['08:00'] });
+    const r = await s.audio();
+    assert.equal(r.status, 200);
+    assert.equal(r.body.transcripcion, 'ya la tomé');
+    assert.match(r.body.reply, /Registré Metformina/);
+    assert.equal(r.body.accion.tipo, 'tomada');
+    assert.deepEqual(s.llamadas, [{ bytes: 4000, mime: 'audio/mp4' }]);
+    assert.equal(s.hogar().tomas[0].estado, 'tomada');
+  } finally { s.close(); }
+});
+
+test('audio: sin voz entendible no inventa nada y pide repetir', async () => {
+  const s = await conAudio('   ');
+  try {
+    const r = await s.audio();
+    assert.equal(r.status, 200);
+    assert.equal(r.body.transcripcion, '');
+    assert.match(r.body.reply, /No te escuché/);
+  } finally { s.close(); }
+});
+
+test('audio: rechaza audios vacíos, enormes, de otro tipo, sin token o de cuidador', async () => {
+  const s = await conAudio('qué sigue');
+  try {
+    assert.equal((await s.audio(100)).status, 400);
+    assert.equal((await s.audio(11 * 1024 * 1024)).status, 413);
+    assert.equal((await s.audio(4000, { mime: 'application/json' })).status, 415);
+    assert.equal((await s.audio(4000, { token: 'lzo_falso' })).status, 401);
+    const cod = (await s.p('POST', '/circulo/invitacion')).body.codigo;
+    const ct = (await s.call('POST', '/circulo/unirse', { body: { codigo: cod, nombre: 'Luis' } })).body.token;
+    assert.equal((await s.audio(4000, { token: ct })).status, 403);
+    assert.equal(s.llamadas.length, 0); // nada de eso llegó al servicio de transcripción
+  } finally { s.close(); }
+});
+
+test('audio: si la transcripción falla responde 502 con un mensaje claro; sin configurar, 503', async () => {
+  const s = await conAudio('x', { falla: true });
+  try {
+    const r = await s.audio();
+    assert.equal(r.status, 502);
+    assert.match(r.body.error, /No pude entender el audio/);
+  } finally { s.close(); }
+  const t = await conPersona(); // sin función de transcripción ni GROQ_API_KEY
+  const antes = process.env.GROQ_API_KEY; delete process.env.GROQ_API_KEY;
+  try {
+    const res = await fetch(`http://127.0.0.1:${t.port}/voz/audio`, { method: 'POST', headers: { Authorization: `Bearer ${t.token}`, 'Content-Type': 'audio/mp4' }, body: Buffer.alloc(4000, 1) });
+    assert.equal(res.status, 503);
+  } finally { if (antes) process.env.GROQ_API_KEY = antes; t.close(); }
+});
+
+test('audio: límite de 12 audios por minuto por dispositivo', async () => {
+  const s = await conAudio('ayuda');
+  try {
+    for (let i = 0; i < 12; i++) assert.equal((await s.audio()).status, 200);
+    assert.equal((await s.audio()).status, 429);
+    s.clock.set('2026-11-18T14:01:30Z');
+    assert.equal((await s.audio()).status, 200);
+  } finally { s.close(); }
 });
