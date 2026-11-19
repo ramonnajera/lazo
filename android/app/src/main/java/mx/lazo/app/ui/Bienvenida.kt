@@ -31,7 +31,12 @@ fun Bienvenida(vm: AppViewModel, ui: Ui) {
     LaunchedEffect(grande, contraste) { vm.setEscala(if (grande) 1.4f else 1.0f); vm.setContraste(contraste) }
 
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item { Text1("Lazo", ui) }
+        item {
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                LogoLazo(tam = 72.dp)
+                Text1("Lazo", ui)
+            }
+        }
         item { MensajeVivo(ui.mensaje, vm::limpiarMensaje) }
         when (paso) {
             Paso.ELEGIR -> {

@@ -14,6 +14,7 @@ export function SaludPanel({ items, today }: { items: Medicion[]; today: string 
         {items.map((m) => (
           <div key={m.id} className="cita" role="group" aria-label={`${TITULO[m.tipo] ?? m.tipo}: ${m.texto}, ${relDate(m.fecha, today)} ${hora12(m.hora)}.${m.aviso ? ` Aviso: ${m.aviso.texto}.` : ""}`}>
             <div className="cita-top">
+              <span className={`tdot td-${m.tipo}`} aria-hidden />
               <span className="cita-when">{relDate(m.fecha, today)} · {hora12(m.hora)}</span>
               <span className="cita-name">{TITULO[m.tipo] ?? m.tipo}: {m.texto}</span>
             </div>

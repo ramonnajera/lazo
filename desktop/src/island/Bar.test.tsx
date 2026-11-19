@@ -9,9 +9,9 @@ const toma = (o: Partial<Toma> = {}): Toma => ({ medicamentoId: "a", nombre: "Me
 const base = { tomas: null, active: null, onSection: () => {} };
 
 describe("Bar", () => {
-  it("tiene_los_cinco_destinos_y_la_configuracion_en_ese_orden", () => {
+  it("tiene_hablar_con_lazo_primero_los_cuatro_destinos_y_la_configuracion_en_ese_orden", () => {
     render(<Bar {...base} />);
-    expect(screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Hoy", "Citas", "Salud", "Apoyos", "Hablar con Lazo", "Configuración"]);
+    expect(screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Hablar con Lazo", "Hoy", "Citas", "Salud", "Apoyos", "Configuración"]);
   });
 
   it("el_clic_en_un_destino_lo_abre", () => {
@@ -74,5 +74,15 @@ describe("marca de Lazo en la barra", () => {
     expect(logo).toBeTruthy();
     expect(logo!.getAttribute("aria-label")).toBe("Lazo");
     expect(container.querySelector(".bar")!.firstElementChild).toBe(logo);
+  });
+});
+
+describe("color y jerarquía de la barra", () => {
+  it("hablar_con_lazo_es_el_boton_principal_y_cada_destino_tiene_su_color", () => {
+    render(<Bar {...base} />);
+    expect(screen.getByLabelText("Hablar con Lazo").className).toContain("talk");
+    for (const [label, tone] of [["Hoy", "t-hoy"], ["Citas", "t-citas"], ["Salud", "t-salud"], ["Apoyos", "t-apoyos"]]) {
+      expect(screen.getByLabelText(label).className).toContain(tone);
+    }
   });
 });

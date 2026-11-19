@@ -435,7 +435,7 @@ export default function Island() {
           hidden={!showBar}
           onWidth={onBarWidth}
         />
-        <Sections section={section} hidden={base !== "open"} banner={bannerOn} />
+        <Sections section={section} hidden={base !== "open"} banner={bannerOn} onTalk={() => onSection("chat")} />
         {view === "listening" && (
           <div className={overlay ? "isl-listen-overlay" : undefined} onClick={openReply}>
             <Listening state={listenState} onConfirm={onConfirm} />

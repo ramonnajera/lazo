@@ -9,6 +9,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import mx.lazo.app.data.Medicion
 import mx.lazo.app.data.TipoMedicion
@@ -20,12 +26,40 @@ private val NIVELES_ANIMO = listOf(1 to "Muy mal", 2 to "Mal", 3 to "Regular", 4
 
 @Composable
 fun PantallaSeguimiento(vm: AppViewModel, ui: Ui, abrir: (Pantalla) -> Unit) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    val columnas = if (LocalDensity.current.fontScale >= 1.5f) 1 else 2
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = RellenoPantalla, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Titulo("¿Cómo estoy?") }
         item { Cuerpo("Anota cómo te sientes o lo que mide tu aparato. Tu cuidador lo verá.", secundario = true) }
-        for (t in TipoMedicion.entries) item { BotonGrande("Anotar ${t.titulo.lowercase()}", { abrir(Pantalla.FormMedicion(t)) }, tono = Tono.NEUTRO, icono = iconoDe(t)) }
+        // Dos columnas de cuadros de color; con letra grande, una sola para que nada se corte
+        for (fila in TipoMedicion.entries.chunked(columnas)) item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                for (t in fila) CuadroMedicion(t, { abrir(Pantalla.FormMedicion(t)) }, Modifier.weight(1f)) // el último, si queda solo, ocupa todo el renglón
+            }
+        }
         if (ui.mediciones.isNotEmpty()) item { Subtitulo("Lo que has anotado") }
         items(ui.mediciones.take(30), key = { it.id }) { m -> FilaMedicion(m) { vm.borrarMedicion(m.id) } }
+    }
+}
+
+fun acentoDe(t: TipoMedicion) = when (t) {
+    TipoMedicion.PRESION -> Acento.ROSA; TipoMedicion.GLUCOSA -> Acento.PETROLEO; TipoMedicion.ANIMO -> Acento.MORADO
+    TipoMedicion.DOLOR -> Acento.NARANJA; TipoMedicion.PESO -> Acento.VERDE
+}
+
+/** Un cuadro grande y de color por cada cosa que se puede anotar: ícono de color arriba, nombre claro abajo. */
+@Composable
+private fun CuadroMedicion(t: TipoMedicion, alPulsar: () -> Unit, modifier: Modifier = Modifier) {
+    val p = LocalPaleta.current
+    val acento = acentoDe(t)
+    androidx.compose.material3.Surface(
+        onClick = alPulsar, shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp), color = p.superficie,
+        border = androidx.compose.foundation.BorderStroke(if (p.altoContraste) 3.dp else 3.dp, if (p.altoContraste) p.texto else p.acento(acento)),
+        modifier = modifier.heightIn(min = 120.dp).semantics { role = Role.Button; contentDescription = "Anotar ${t.titulo.lowercase()}" },
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
+            IconoChip(iconoDe(t), acento, tam = 56.dp)
+            Text(t.titulo, style = MaterialTheme.typography.labelLarge, color = p.texto)
+        }
     }
 }
 
@@ -37,7 +71,10 @@ private fun iconoDe(t: TipoMedicion) = when (t) {
 @Composable
 private fun FilaMedicion(m: Medicion, borrar: () -> Unit) {
     TarjetaLegible("${m.tipo.titulo}: ${m.texto}, ${fechaCorta(m.fecha)} a las ${horaCorta(m.hora)}.${m.aviso?.let { " Aviso: ${it.texto}." } ?: ""}") {
-        Text("${m.tipo.titulo}: ${m.texto}", style = MaterialTheme.typography.titleLarge, color = LocalPaleta.current.texto)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            IconoChip(iconoDe(m.tipo), acentoDe(m.tipo))
+            Text("${m.tipo.titulo}: ${m.texto}", style = MaterialTheme.typography.titleLarge, color = LocalPaleta.current.texto, modifier = Modifier.weight(1f))
+        }
         Cuerpo("${fechaCorta(m.fecha)} · ${horaCorta(m.hora)}", secundario = true)
         if (m.nota.isNotBlank()) Cuerpo(m.nota, secundario = true)
         m.aviso?.let { Aviso("${it.texto}. Es un aviso orientativo, no un diagnóstico.", peligro = it.nivel == "alta") }

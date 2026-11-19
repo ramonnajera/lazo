@@ -119,3 +119,11 @@ describe("index.css settings window scrollbars", () => {
     expect(index).toMatch(/html:not\(\.island\) \*\s*\{[^}]*scrollbar-width:\s*thin/);
   });
 });
+
+describe("tokens.css color por tema", () => {
+  it("cada_tema_tiene_su_color_y_hablar_con_lazo_va_relleno", () => {
+    for (const v of ["--c-hoy", "--c-citas", "--c-salud", "--c-apoyos", "--c-medicina"]) expect(css).toMatch(new RegExp(`${v}:\\s*#[0-9A-Fa-f]{6};`));
+    expect(css).toMatch(/\.icon-btn\.talk\s*\{[^}]*background:\s*var\(--lazo-azul\)/);
+    expect(css).toMatch(/\.talk-row\s*\{[^}]*background:\s*var\(--lazo-azul\)/);
+  });
+});

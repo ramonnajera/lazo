@@ -12,6 +12,12 @@
   --lazo-verde: #065F2C;
   --lazo-cafe: #6B3A00;
   --lazo-rojo: #8F1313;
+  /* Acento por tema, aclarado para verse sobre el azul noche (≥ 6:1): mismos matices que la app del teléfono. */
+  --c-hoy: #7FAAFF;
+  --c-citas: #C9A0FF;
+  --c-salud: #FF7096;
+  --c-apoyos: #FFB74D;
+  --c-medicina: #4ADE80;
 
   --bg: #0B1220;
   --edge: rgba(255, 255, 255, 0.08);
@@ -103,6 +109,28 @@ html.island *, html.island *::before, html.island *::after {
 .icon-btn:hover { background: var(--edge); }
 .icon-btn[aria-pressed="true"] { background: var(--lazo-azul); color: #fff; }
 .icon-btn svg { width: var(--icon-size); height: var(--icon-size); }
+.icon-btn.t-hoy { color: var(--c-hoy); } .icon-btn.t-citas { color: var(--c-citas); } .icon-btn.t-salud { color: var(--c-salud); } .icon-btn.t-apoyos { color: var(--c-apoyos); }
+.icon-btn.t-hoy[aria-pressed="true"] { background: rgba(127, 170, 255, 0.22); box-shadow: inset 0 0 0 1px var(--c-hoy); color: var(--c-hoy); }
+.icon-btn.t-citas[aria-pressed="true"] { background: rgba(201, 160, 255, 0.22); box-shadow: inset 0 0 0 1px var(--c-citas); color: var(--c-citas); }
+.icon-btn.t-salud[aria-pressed="true"] { background: rgba(255, 112, 150, 0.22); box-shadow: inset 0 0 0 1px var(--c-salud); color: var(--c-salud); }
+.icon-btn.t-apoyos[aria-pressed="true"] { background: rgba(255, 183, 77, 0.22); box-shadow: inset 0 0 0 1px var(--c-apoyos); color: var(--c-apoyos); }
+.icon-btn.t-hoy:hover, .icon-btn.t-citas:hover, .icon-btn.t-salud:hover, .icon-btn.t-apoyos:hover { background: var(--hover); }
+/* Hablar con Lazo: el botón principal, relleno con el azul de la marca. */
+.icon-btn.talk { background: var(--lazo-azul); color: #fff; border-radius: 50%; width: 30px; height: 30px; box-shadow: inset 0 0 0 1px var(--lazo-azul-claro); }
+.icon-btn.talk:hover { background: #1450c0; }
+.icon-btn.talk[aria-pressed="true"] { background: #fff; color: var(--lazo-azul); box-shadow: 0 0 0 2px var(--lazo-azul-claro); }
+.icon-btn.talk svg { width: 17px; height: 17px; }
+/* Punto de color por tema en las listas */
+.tdot { width: 8px; height: 8px; border-radius: 50%; flex: none; align-self: center; background: var(--text-3); }
+.td-cita { background: var(--c-citas); } .td-apoyo { background: var(--c-apoyos); } .td-medicina { background: var(--c-medicina); }
+.td-presion { background: var(--c-salud); } .td-glucosa { background: #4DD0E1; } .td-animo { background: var(--c-citas); } .td-dolor { background: var(--c-apoyos); } .td-peso { background: var(--c-medicina); }
+/* «Hablar con Lazo» dentro de Hoy */
+.talk-row { display: flex; align-items: center; gap: 10px; width: 100%; margin: 2px 0 6px; padding: 8px 12px; border: 0; border-radius: 14px; background: var(--lazo-azul); color: #fff; font: inherit; text-align: left; cursor: pointer; box-shadow: inset 0 0 0 1px var(--lazo-azul-claro); }
+.talk-row:hover { background: #1450c0; }
+.talk-row .talk-ic { width: 30px; height: 30px; border-radius: 50%; background: #fff; color: var(--lazo-azul); display: grid; place-items: center; flex: none; }
+.talk-row .talk-ic svg { width: 17px; height: 17px; }
+.talk-row .talk-t { font-weight: 700; font-size: 14px; line-height: 1.15; }
+.talk-row .talk-s { font-size: 11.5px; opacity: 0.9; }
 .count { background: var(--count-bg); color: var(--count-fg); border-radius: var(--chip-radius); padding: 3px 7px; font-weight: 700; font-size: var(--chip-size); flex: none; border: 0; font-family: inherit; cursor: pointer; }
 .bar-tail { display: flex; align-items: center; gap: 8px; margin-left: auto; min-width: 0; }
 .bar-next { color: var(--text-2); font: inherit; font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; border: 0; padding: 3px 4px; margin: 0 -4px; border-radius: var(--chip-radius); cursor: pointer; }
@@ -330,9 +358,10 @@ html.island *, html.island *::before, html.island *::after {
 .cita { padding: 6px 6px 8px; border-radius: var(--row-radius); }
 .cita:hover { background: var(--edge); }
 .cita-top { display: flex; gap: 10px; align-items: baseline; }
+.cita-top .tdot { align-self: center; }
 .cita-when { color: var(--text-2); font-size: 12px; flex: none; min-width: 92px; }
 .cita-name { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cita-sub { color: var(--text-2); font-size: 12px; margin-left: 102px; }
+.cita-sub { color: var(--text-2); font-size: 12px; margin-left: 118px; }
 .cita-sub.aviso { color: var(--gc-5); }
 .cita-sub.aviso.alta { color: var(--gc-11); }
 .apoyos-nota { color: var(--text-3); font-size: 11px; padding: 6px 6px 0; }

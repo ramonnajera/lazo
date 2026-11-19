@@ -2,15 +2,16 @@ import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type 
 import type { Toma } from "../api/types";
 import { hora12 } from "../panels/format";
 import { requiereAtencion, siguienteToma } from "../panels/Hoy";
-import { IconCalendar, IconChat, IconGear, IconList, IconPulse, IconTodo, LazoMark } from "../ui/icons";
+import { IconCalendar, IconGear, IconList, IconMic, IconPulse, IconTodo, LazoMark } from "../ui/icons";
 import { ISLAND_W, type Section } from "./model";
 
-const BUTTONS: { section: Section; label: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
-  { section: "hoy", label: "Hoy", Icon: IconTodo },
-  { section: "citas", label: "Citas", Icon: IconCalendar },
-  { section: "salud", label: "Salud", Icon: IconPulse },
-  { section: "apoyos", label: "Apoyos", Icon: IconList },
-  { section: "chat", label: "Hablar con Lazo", Icon: IconChat },
+/** Cada destino lleva su color (el mismo de la app del teléfono); «Hablar con Lazo» es el botón principal: relleno y primero. */
+const BUTTONS: { section: Section; label: string; Icon: ComponentType<SVGProps<SVGSVGElement>>; tone: string }[] = [
+  { section: "chat", label: "Hablar con Lazo", Icon: IconMic, tone: "talk" },
+  { section: "hoy", label: "Hoy", Icon: IconTodo, tone: "t-hoy" },
+  { section: "citas", label: "Citas", Icon: IconCalendar, tone: "t-citas" },
+  { section: "salud", label: "Salud", Icon: IconPulse, tone: "t-salud" },
+  { section: "apoyos", label: "Apoyos", Icon: IconList, tone: "t-apoyos" },
 ];
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -82,8 +83,8 @@ export default function Bar({ tomas, active, onSection, onSettings, hidden = fal
       <LazoMark className="bar-logo" />
       <span className="bar-clock">{to12h(time)}</span>
       <span className="bar-sep" />
-      {BUTTONS.map(({ section, label, Icon }) => (
-        <button key={section} type="button" className="icon-btn" aria-label={label} title={label} aria-pressed={active === section} onClick={() => onSection(section)}>
+      {BUTTONS.map(({ section, label, Icon, tone }) => (
+        <button key={section} type="button" className={`icon-btn ${tone}`} aria-label={label} title={label} aria-pressed={active === section} onClick={() => onSection(section)}>
           <Icon />
         </button>
       ))}

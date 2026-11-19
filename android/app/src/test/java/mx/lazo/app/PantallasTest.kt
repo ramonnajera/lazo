@@ -204,6 +204,47 @@ class PantallasTest {
         assertEquals(Pantalla.Chat, destino)
     }
 
+    @Test fun hablarConLazoEsLoPrimeroQueSeAlcanzaEnElInicio() {
+        mostrar { PantallaHoy(vm, ui) {} }
+        val hablar = rule.onNodeWithText("Hablar con Lazo").fetchSemanticsNode().boundsInRoot
+        val dosis = rule.onNodeWithText("Ya la tomé").fetchSemanticsNode().boundsInRoot
+        val saludo = rule.onNodeWithText("Hola, Ana").fetchSemanticsNode().boundsInRoot
+        assertTrue("debe ir justo después del saludo, antes de la toma", hablar.top > saludo.top && hablar.top < dosis.top)
+        assertTrue("debe quedar en la primera pantalla (arriba de 600 dp)", hablar.bottom < 600f * 2f)
+        assertTrue("debe medir al menos 64 dp", hablar.height >= 64f * 2f)
+    }
+
+    @Test fun cadaCosaQueSeAnotaTieneSuCuadroGrandeYConNombre() {
+        mostrar { PantallaSeguimiento(vm, ui) {} }
+        for (t in TipoMedicion.entries) {
+            val n = rule.onNodeWithContentDescription("Anotar ${t.titulo.lowercase()}").assertExists().fetchSemanticsNode()
+            assertTrue("${t.titulo} debe medir al menos 64 dp", n.boundsInRoot.height >= 64f * 2f && n.boundsInRoot.width >= 64f * 2f)
+        }
+        rule.onNodeWithText("Presión").assertExists() // el nombre está escrito: el color nunca es lo único
+    }
+
+    @Test fun conLetraGrandeLaCuadriculaDeSaludPasaAUnaColumna() {
+        mostrar(false, 2f) { PantallaSeguimiento(vm, ui) {} }
+        val a = rule.onNodeWithContentDescription("Anotar presión").fetchSemanticsNode().boundsInRoot
+        val b = rule.onNodeWithContentDescription("Anotar glucosa").fetchSemanticsNode().boundsInRoot
+        assertTrue("con letra grande cada cuadro va en su propio renglón", b.top >= a.bottom)
+    }
+
+    @Test fun lasPantallasInternasTienenUnVolverGrandeEnPantalla() {
+        mostrar { Principal(vm, ui) }
+        rule.onNodeWithText("Hablar con Lazo").performClick()
+        rule.waitForIdle()
+        val volver = rule.onNodeWithContentDescription("Volver").assertExists().fetchSemanticsNode().boundsInRoot
+        assertTrue("el botón Volver debe medir al menos 64 dp", volver.height >= 64f * 2f)
+    }
+
+    @Test fun enLasPestanasLaAccionDeHablarSiempreEstaALaMano() {
+        mostrar { Principal(vm, ui) }
+        rule.onNodeWithText("Hablar con Lazo").assertExists() // en Hoy, el botón grande
+        rule.onNodeWithText("Citas").performClick(); rule.waitForIdle()
+        rule.onNodeWithContentDescription("Hablar con Lazo").assertExists() // en las demás, el botón flotante
+    }
+
     // ---------- capturas ----------
     @Test fun capturas() {
         val resumen = Resumen("Ana Ejemplo", Discapacidad.AMBAS, tomas[1], 83, listOf(DiaAdherencia("2026-11-16", 3, 3, 0, 0, 0), DiaAdherencia("2026-11-17", 3, 2, 1, 0, 0), DiaAdherencia("2026-11-18", 3, 1, 0, 1, 1)), citas, listOf(TipoMedicion.PRESION to "120/80", TipoMedicion.GLUCOSA to "260 mg/dL"),

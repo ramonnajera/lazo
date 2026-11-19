@@ -7,6 +7,7 @@ import { refreshKeys } from "./usePanelData";
 function Fila({ c, nueva, abrir }: { c: Convocatoria; nueva: boolean; abrir: (url: string) => void }) {
   return (
     <div className="crow apoyo" role="group" aria-label={`${nueva ? "Nueva. " : ""}${c.nombre}. ${c.dependencia}.${c.discapacidad ? " Para personas con discapacidad." : ""}`}>
+      <span className="tdot td-apoyo" aria-hidden />
       {nueva && <span className="st st-ahora">Nueva</span>}
       <span className="txt" title={`${c.nombre} — ${c.dependencia}`}>{c.nombre}</span>
       <button type="button" className="undo" onClick={() => abrir(c.documento)} aria-label={`Abrir la convocatoria: ${c.nombre}`}>

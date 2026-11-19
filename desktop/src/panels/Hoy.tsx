@@ -1,3 +1,4 @@
+import { IconMic } from "../ui/icons";
 import { useState } from "react";
 import { registrarToma } from "../api/client";
 import type { Estado, Toma } from "../api/types";
@@ -36,7 +37,7 @@ export function Chip({ t, corto = false }: { t: Toma; corto?: boolean }) {
   );
 }
 
-export function HoyPanel({ items, today }: { items: Toma[]; today: string }) {
+export function HoyPanel({ items, today, onTalk }: { items: Toma[]; today: string; onTalk?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sig = siguienteToma(items);
@@ -60,6 +61,16 @@ export function HoyPanel({ items, today }: { items: Toma[]; today: string }) {
         <span className="pf-title">Hoy</span>
         <span className="hoy-date">{fechaLarga(today)}</span>
       </div>
+      {onTalk && (
+        <button type="button" className="talk-row" onClick={onTalk} aria-label="Hablar con Lazo. Pregunta o di: ya la tomé.">
+          <span className="talk-ic" aria-hidden><IconMic /></span>
+          <span>
+            <span className="talk-t">Hablar con Lazo</span>
+            <br />
+            <span className="talk-s">Pregunta o di «ya la tomé»</span>
+          </span>
+        </button>
+      )}
       {error && <div className="cempty" role="alert">{error}</div>}
       {sig ? (
         <section className={`hoy-card${urgente ? " urgent" : ""}`} aria-label={`${urgente ? "Es hora de" : "Siguiente toma:"} ${sig.nombre} ${sig.dosis}, ${relDate(sig.fecha, today)} ${hora12(sig.hora)}. ${textoEstado(sig)}`}>

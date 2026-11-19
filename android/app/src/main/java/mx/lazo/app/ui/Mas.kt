@@ -26,15 +26,15 @@ import mx.lazo.app.domain.horaCorta
 
 @Composable
 fun PantallaMas(ui: Ui, abrir: (Pantalla) -> Unit) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = RellenoPantalla, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Titulo("Más") }
         if (ui.rol == Rol.PERSONA) {
-            item { BotonGrande("Mi círculo de cuidado", { abrir(Pantalla.Circulo) }, tono = Tono.NEUTRO, icono = Icons.Filled.Group) }
-            item { BotonGrande("Apoyos y convocatorias", { abrir(Pantalla.Convocatorias) }, tono = Tono.NEUTRO, icono = Icons.Filled.Campaign) }
-            item { BotonGrande("Qué puedo decirle a Lazo", { abrir(Pantalla.Ayuda) }, tono = Tono.NEUTRO, icono = Icons.Filled.Mic) }
+            item { FilaAccion("Mi círculo de cuidado", Icons.Filled.Group, Acento.ROSA, { abrir(Pantalla.Circulo) }, detalle = "Quién te acompaña") }
+            item { FilaAccion("Apoyos y convocatorias", Icons.Filled.Campaign, Acento.NARANJA, { abrir(Pantalla.Convocatorias) }, detalle = "Secretaría de Desarrollo Humano") }
+            item { FilaAccion("Qué puedo decirle a Lazo", Icons.Filled.Mic, Acento.AZUL, { abrir(Pantalla.Ayuda) }) }
         }
-        item { BotonGrande("Letra, contraste y voz", { abrir(Pantalla.Accesibilidad) }, tono = Tono.NEUTRO, icono = Icons.Filled.Accessibility) }
-        item { BotonGrande("Conexión", { abrir(Pantalla.Conexion) }, tono = Tono.NEUTRO, icono = Icons.Filled.Settings) }
+        item { FilaAccion("Letra, contraste y voz", Icons.Filled.Accessibility, Acento.MORADO, { abrir(Pantalla.Accesibilidad) }) }
+        item { FilaAccion("Conexión", Icons.Filled.Settings, Acento.GRIS, { abrir(Pantalla.Conexion) }) }
         item { Cuerpo("Lazo ${BuildConfig.VERSION_NAME}. Tus datos están en el servidor de Lazo, separados de los de cualquier otra persona, y solo los ve quien tú invites.", secundario = true) }
     }
 }

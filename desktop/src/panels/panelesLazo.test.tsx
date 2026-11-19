@@ -146,3 +146,18 @@ describe("Apoyos", () => {
     expect(screen.getByText(/No pude leer la página de la Secretaría \(sin conexión\)/)).toBeTruthy();
   });
 });
+
+describe("hablar con lazo desde Hoy", () => {
+  it("el_boton_aparece_arriba_de_la_toma_y_abre_el_chat", () => {
+    const onTalk = vi.fn();
+    const { container } = render(<HoyPanel items={[]} today="2026-11-18" onTalk={onTalk} />);
+    const boton = screen.getByRole("button", { name: /Hablar con Lazo/ });
+    fireEvent.click(boton);
+    expect(onTalk).toHaveBeenCalledTimes(1);
+    expect(container.querySelector(".pf-head")!.nextElementSibling).toBe(boton);
+  });
+  it("sin_onTalk_no_se_muestra", () => {
+    render(<HoyPanel items={[]} today="2026-11-18" />);
+    expect(screen.queryByRole("button", { name: /Hablar con Lazo/ })).toBeNull();
+  });
+});

@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,14 +28,17 @@ fun resumenHorarios(m: Medicamento): String {
 
 @Composable
 fun PantallaMedicinas(ui: Ui, abrir: (Pantalla) -> Unit) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = RellenoPantalla, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Titulo("Mis medicinas") }
         item { BotonGrande("Agregar una medicina", { abrir(Pantalla.FormMed(null)) }, icono = Icons.Filled.Add) }
         if (ui.medicamentos.isEmpty()) item { Cuerpo("Todavía no has agregado ninguna medicina. Cuando lo hagas, Lazo te avisará y te leerá en voz alta cada toma.", secundario = true) }
         items(ui.medicamentos, key = { it.id }) { m ->
             val bajas = m.existencias != null && m.existencias <= 3
             TarjetaLegible("${textoDosis(m.nombre, m.dosis)}. ${resumenHorarios(m)}.${if (!m.activo) " En pausa." else ""}${if (bajas) " Quedan pocas dosis." else ""} Toca para editar.") {
-                Text(m.nombre, style = MaterialTheme.typography.titleLarge, color = LocalPaleta.current.texto)
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    IconoChip(Icons.Filled.Medication, Acento.VERDE)
+                    Text(m.nombre, style = MaterialTheme.typography.titleLarge, color = LocalPaleta.current.texto, modifier = Modifier.weight(1f))
+                }
                 if (m.dosis.isNotBlank()) Cuerpo(m.dosis)
                 Cuerpo(resumenHorarios(m), secundario = true)
                 if (!m.activo) Aviso("En pausa: no te avisará.")

@@ -42,6 +42,19 @@ val PaletaAltoContraste = Paleta(
 
 val LocalPaleta = staticCompositionLocalOf { PaletaNormal }
 
+/**
+ * Colores de acento por tema (Hoy, Medicinas, Citas, Salud…). Son llamativos a propósito, pero nunca llevan solos el
+ * significado: cada uno va con un ícono y con texto. Todos dan al menos 4.5:1 con blanco (ícono blanco sobre el color) y
+ * sobre el fondo claro (ícono de color sobre fondo). En alto contraste todos pasan a amarillo sobre negro.
+ */
+enum class Acento(val color: Color) {
+    AZUL(Color(0xFF0B3D91)), VERDE(Color(0xFF12803C)), MORADO(Color(0xFF7A2FC0)), ROSA(Color(0xFFD0124F)),
+    NARANJA(Color(0xFFC2410C)), PETROLEO(Color(0xFF0B7285)), GRIS(Color(0xFF3B4658)),
+}
+
+fun Paleta.acento(a: Acento): Color = if (altoContraste) Color(0xFFFFE600) else a.color
+fun Paleta.sobreAcento(): Color = if (altoContraste) Color.Black else Color.White
+
 private fun esquema(p: Paleta): ColorScheme {
     val base = if (p.altoContraste) darkColorScheme() else lightColorScheme()
     return base.copy(

@@ -34,7 +34,7 @@ Es el requisito central, no un extra: contraste ≥ 7:1, áreas táctiles ≥ 64
 Sin cuentas ni analítica. Terceros, solo cuando hablas o escribes una frase libre a Lazo: el audio va a Whisper (Groq) solo para convertirlo en texto, y la frase —con lo mínimo de tu agenda y tus medicinas que haga falta para responder— va a Claude (Anthropic); nada se guarda en esos servicios por parte de Lazo. Las frases cortas como «qué sigue» o «ya la tomé» se resuelven en el propio servidor, sin terceros. Quien no quiera usarlo puede escribir sus órdenes o tocar las frases sugeridas, y el dictado de Windows es 100 % local. Cada persona tiene su propio espacio aislado dentro del servidor (nadie ve ni toca los datos de otra), con el archivo de datos en modo privado y los tokens guardados solo como huella. Quien quiera tener el suyo —un municipio, una asociación— lo monta con un comando y la app admite cambiar de servidor en «Opciones avanzadas». El dictado y las órdenes por voz de Windows se procesan en la computadora. Lo único que se descarga de internet es la página pública de convocatorias.
 
 ## Pruebas
-`server`: 80 (incluye aislamiento entre hogares, migración de datos, órdenes por audio y conversación con el modelo) · `android`: 49 (incluye pantallas con capturas y una prueba contra el servidor real) · `desktop`: 141 (TypeScript) + 84 (Rust: 45 de la app y 39 del núcleo).
+`server`: 80 (incluye aislamiento entre hogares, migración de datos, órdenes por audio y conversación con el modelo) · `android`: 60 (incluye pantallas con capturas y una prueba contra el servidor real) · `desktop`: 145 (TypeScript) + 84 (Rust: 45 de la app y 39 del núcleo).
 
 ## Licencia
 MIT. Ver [`LICENSE`](LICENSE) y [`desktop/THIRD_PARTY.md`](desktop/THIRD_PARTY.md).

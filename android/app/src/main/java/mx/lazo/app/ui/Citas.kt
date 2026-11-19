@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,14 +22,17 @@ import org.json.JSONObject
 @Composable
 fun PantallaCitas(ui: Ui, abrir: (Pantalla) -> Unit) {
     val persona = ui.rol == Rol.PERSONA
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = RellenoPantalla, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Titulo("Mis citas") }
         if (persona) item { BotonGrande("Agregar una cita", { abrir(Pantalla.FormCita(null)) }, icono = Icons.Filled.Add) }
         if (ui.citas.isEmpty()) item { Cuerpo("No hay citas próximas.", secundario = true) }
         items(ui.citas, key = { it.id }) { c ->
             val cuando = fechaHablada(c.fecha, ui.hoy)
             TarjetaLegible("Cita con ${c.especialista}, ${cuando} a las ${horaHablada(c.hora)}.${if (c.lugar.isNotBlank()) " En ${c.lugar}." else ""}${if (c.transporte.isNotBlank()) " Transporte: ${c.transporte}." else ""}") {
-                Text(c.especialista, style = MaterialTheme.typography.titleLarge, color = LocalPaleta.current.texto)
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    IconoChip(Icons.Filled.CalendarMonth, Acento.MORADO)
+                    Text(c.especialista, style = MaterialTheme.typography.titleLarge, color = LocalPaleta.current.texto, modifier = Modifier.weight(1f))
+                }
                 Cuerpo("${fechaLarga(c.fecha).replaceFirstChar { it.uppercase() }} · ${horaCorta(c.hora)}")
                 if (c.motivo.isNotBlank()) Cuerpo(c.motivo, secundario = true)
                 if (c.lugar.isNotBlank()) Cuerpo("Lugar: ${c.lugar}", secundario = true)

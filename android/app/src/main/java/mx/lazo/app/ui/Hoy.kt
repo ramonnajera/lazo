@@ -20,12 +20,18 @@ import mx.lazo.app.domain.*
 fun PantallaHoy(vm: AppViewModel, ui: Ui, abrir: (Pantalla) -> Unit) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
-            Titulo("Hola, ${ui.nombre.substringBefore(' ')}")
-            if (ui.hoy.isNotEmpty()) Cuerpo("Hoy es ${fechaLarga(ui.hoy)}", secundario = true)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                LogoLazo(tam = 52.dp)
+                Column {
+                    Titulo("Hola, ${ui.nombre.substringBefore(' ')}")
+                    if (ui.hoy.isNotEmpty()) Cuerpo("Hoy es ${fechaLarga(ui.hoy)}", secundario = true)
+                }
+            }
         }
+        // Lo primero que se ve y se alcanza: hablar con Lazo
+        item { BotonHablar({ abrir(Pantalla.Chat) }) }
         item { TarjetaSiguiente(vm, ui.proxima, ui.hoy) }
-        item { BotonGrande("Hablar con Lazo", { abrir(Pantalla.Chat) }, icono = Icons.Filled.Mic, tono = Tono.NEUTRO, descripcion = "Hablar con Lazo. Puedes decir: ya la tomé, qué sigue, o mis citas.") }
-        item { BotonGrande("Leer mi día en voz alta", { vm.hablar(fraseHoy(ui.tomas, ui.hoy) + " " + fraseCitas(ui.citas, ui.hoy)) }, icono = Icons.Filled.VolumeUp, tono = Tono.NEUTRO) }
+        item { FilaAccion("Leer mi día en voz alta", Icons.Filled.VolumeUp, Acento.PETROLEO, { vm.hablar(fraseHoy(ui.tomas, ui.hoy) + " " + fraseCitas(ui.citas, ui.hoy)) }) }
         if (ui.tomas.isNotEmpty()) item { Subtitulo("Tus tomas de hoy") }
         else item { Cuerpo("Hoy no tienes tomas programadas.", secundario = true) }
         items(ui.tomas, key = { it.clave }) { FilaToma(it, vm) }
@@ -33,14 +39,17 @@ fun PantallaHoy(vm: AppViewModel, ui: Ui, abrir: (Pantalla) -> Unit) {
             item { Subtitulo("Tu próxima cita") }
             item {
                 TarjetaLegible("Próxima cita: ${fraseCitas(listOf(c), ui.hoy)}") {
-                    Text(c.especialista, style = MaterialTheme.typography.titleLarge, color = LocalPaleta.current.texto)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        IconoChip(Icons.Filled.CalendarMonth, Acento.MORADO)
+                        Text(c.especialista, style = MaterialTheme.typography.titleLarge, color = LocalPaleta.current.texto, modifier = Modifier.weight(1f))
+                    }
                     Cuerpo("${fechaHablada(c.fecha, ui.hoy).replaceFirstChar { it.uppercase() }} · ${horaCorta(c.hora)}")
                     if (c.lugar.isNotBlank()) Cuerpo(c.lugar, secundario = true)
                 }
             }
         }
         val nuevas = ui.convocatorias?.items?.count { it.id in (ui.convocatorias?.nuevas ?: emptySet()) } ?: 0
-        if (nuevas > 0) item { BotonGrande("Hay ${plural(nuevas, "convocatoria nueva", "convocatorias nuevas")}", { abrir(Pantalla.Convocatorias) }, icono = Icons.Filled.Campaign, tono = Tono.NEUTRO) }
+        if (nuevas > 0) item { FilaAccion("Hay ${plural(nuevas, "convocatoria nueva", "convocatorias nuevas")}", Icons.Filled.Campaign, Acento.NARANJA, { abrir(Pantalla.Convocatorias) }) }
     }
 }
 

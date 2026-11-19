@@ -10,9 +10,9 @@ import { localToday } from "../panels/format";
 import { usePanelData } from "../panels/usePanelData";
 import type { Section } from "./model";
 
-function Hoy() {
+function Hoy({ onTalk }: { onTalk?: () => void }) {
   const p = usePanelData("tomas", getTomas);
-  return <PanelFrame panel={p}>{(d) => <HoyPanel items={d.tomas} today={d.fecha || localToday()} />}</PanelFrame>;
+  return <PanelFrame panel={p}>{(d) => <HoyPanel items={d.tomas} today={d.fecha || localToday()} onTalk={onTalk} />}</PanelFrame>;
 }
 function Citas() {
   const p = usePanelData("citas", getCitas);
@@ -28,7 +28,7 @@ function Apoyos() {
 }
 
 // Memorizados: cambiar de sección solo cambia el `display` de los contenedores, sin re-renderizar paneles.
-const VIEWS: Record<Exclude<Section, "chat">, ComponentType> = {
+const VIEWS: Record<Exclude<Section, "chat">, ComponentType<{ onTalk?: () => void }>> = {
   hoy: memo(Hoy),
   citas: memo(Citas),
   salud: memo(Salud),
@@ -41,7 +41,7 @@ const ORDER: Section[] = ["hoy", "citas", "salud", "apoyos", "chat"];
  * Las cinco secciones quedan siempre montadas (sin peticiones ni montajes al cambiar);
  * solo la activa se muestra. `hidden` oculta todas (barra, formulario, escucha…).
  */
-function SectionsImpl({ section, hidden, banner = false }: { section: Section; hidden: boolean; banner?: boolean }) {
+function SectionsImpl({ section, hidden, banner = false, onTalk }: { section: Section; hidden: boolean; banner?: boolean; onTalk?: () => void }) {
   return (
     <div className={`isl-section${banner ? " with-banner" : ""}`} style={hidden ? { display: "none" } : undefined}>
       {ORDER.map((s) => {
@@ -49,7 +49,7 @@ function SectionsImpl({ section, hidden, banner = false }: { section: Section; h
         return (
           <div key={s} data-section={s} style={s === section ? undefined : { display: "none" }}>
             {/* El chat necesita saber cuándo se muestra para bajar al último mensaje. */}
-            {View ? <View /> : <Chat active={!hidden && section === "chat"} />}
+            {View ? <View onTalk={onTalk} /> : <Chat active={!hidden && section === "chat"} />}
           </div>
         );
       })}

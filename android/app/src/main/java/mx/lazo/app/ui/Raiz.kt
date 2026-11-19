@@ -9,9 +9,13 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -41,18 +45,18 @@ sealed interface Pantalla {
     data class FormMedicion(val tipo: TipoMedicion) : Pantalla
 }
 
-private data class Pestana(val pantalla: Pantalla, val texto: String, val icono: ImageVector)
+private data class Pestana(val pantalla: Pantalla, val texto: String, val icono: ImageVector, val acento: Acento)
 
 private val PESTANAS_PERSONA = listOf(
-    Pestana(Pantalla.Hoy, "Hoy", Icons.Filled.Today), Pestana(Pantalla.Medicinas, "Medicinas", Icons.Filled.Medication),
-    Pestana(Pantalla.Citas, "Citas", Icons.Filled.CalendarMonth), Pestana(Pantalla.Seguimiento, "Salud", Icons.Filled.MonitorHeart),
-    Pestana(Pantalla.Mas, "Más", Icons.Filled.MoreHoriz),
+    Pestana(Pantalla.Hoy, "Hoy", Icons.Filled.Today, Acento.AZUL), Pestana(Pantalla.Medicinas, "Medicinas", Icons.Filled.Medication, Acento.VERDE),
+    Pestana(Pantalla.Citas, "Citas", Icons.Filled.CalendarMonth, Acento.MORADO), Pestana(Pantalla.Seguimiento, "Salud", Icons.Filled.Favorite, Acento.ROSA),
+    Pestana(Pantalla.Mas, "Más", Icons.Filled.MoreHoriz, Acento.GRIS),
 )
 
 private val PESTANAS_CUIDADOR = listOf(
-    Pestana(Pantalla.Resumen, "Resumen", Icons.Filled.Dashboard), Pestana(Pantalla.Alertas, "Avisos", Icons.Filled.Notifications),
-    Pestana(Pantalla.Citas, "Citas", Icons.Filled.CalendarMonth), Pestana(Pantalla.Convocatorias, "Apoyos", Icons.Filled.Campaign),
-    Pestana(Pantalla.Mas, "Más", Icons.Filled.MoreHoriz),
+    Pestana(Pantalla.Resumen, "Resumen", Icons.Filled.Dashboard, Acento.AZUL), Pestana(Pantalla.Alertas, "Avisos", Icons.Filled.Notifications, Acento.ROSA),
+    Pestana(Pantalla.Citas, "Citas", Icons.Filled.CalendarMonth, Acento.MORADO), Pestana(Pantalla.Convocatorias, "Apoyos", Icons.Filled.Campaign, Acento.NARANJA),
+    Pestana(Pantalla.Mas, "Más", Icons.Filled.MoreHoriz, Acento.GRIS),
 )
 
 @Composable
@@ -107,8 +111,8 @@ fun Principal(vm: AppViewModel, ui: Ui) {
                             icon = { Icon(t.icono, contentDescription = null, modifier = Modifier.size(30.dp)) },
                             label = { Text(t.texto, style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp, letterSpacing = 0.sp), maxLines = 1) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = LocalPaleta.current.sobrePrimario, selectedTextColor = LocalPaleta.current.texto, indicatorColor = LocalPaleta.current.primario,
-                                unselectedIconColor = LocalPaleta.current.texto, unselectedTextColor = LocalPaleta.current.texto,
+                                selectedIconColor = LocalPaleta.current.sobreAcento(), selectedTextColor = LocalPaleta.current.texto, indicatorColor = LocalPaleta.current.acento(t.acento),
+                                unselectedIconColor = if (LocalPaleta.current.altoContraste) LocalPaleta.current.texto else LocalPaleta.current.acento(t.acento), unselectedTextColor = LocalPaleta.current.texto,
                             ),
                         )
                     }
@@ -122,7 +126,10 @@ fun Principal(vm: AppViewModel, ui: Ui) {
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             MensajeVivo(ui.mensaje, vm::limpiarMensaje)
+            // Las pantallas internas (hablar, círculo, formularios…) llevan un «Volver» grande a la vista; no hay que adivinar el gesto de atrás
+            if (pila.size > 1) BotonVolver { pila.removeAt(pila.lastIndex) }
             Box(Modifier.weight(1f)) {
+                val conFab = pila.size == 1 && ui.rol == Rol.PERSONA && !(menu && grande) && actual != Pantalla.Hoy
                 if (menu && grande) MenuGrande(pestanas, actual) { abrir(it) } else when (val p = actual) {
                     Pantalla.Hoy -> PantallaHoy(vm, ui, ::abrir)
                     Pantalla.Chat -> PantallaChat(vm, ui)
@@ -141,6 +148,7 @@ fun Principal(vm: AppViewModel, ui: Ui) {
                     Pantalla.Conexion -> PantallaConexion(vm, ui)
                     Pantalla.Ayuda -> PantallaAyuda(vm)
                 }
+                if (conFab) FabHablar({ abrir(Pantalla.Chat) }, Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 16.dp))
             }
         }
     }
@@ -150,6 +158,20 @@ fun Principal(vm: AppViewModel, ui: Ui) {
 private fun MenuGrande(pestanas: List<Pestana>, actual: Pantalla, ir: (Pantalla) -> Unit) {
     androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Titulo("¿A dónde vamos?") }
-        items(pestanas.size) { i -> val t = pestanas[i]; BotonGrande(t.texto, { ir(t.pantalla) }, tono = if (t.pantalla == actual) Tono.PRIMARIO else Tono.NEUTRO, icono = t.icono) }
+        items(pestanas.size) { i -> val t = pestanas[i]; FilaAccion(t.texto, t.icono, t.acento, { ir(t.pantalla) }, descripcion = if (t.pantalla == actual) "${t.texto}, pantalla actual" else null) }
+    }
+}
+
+/** «Volver» grande, siempre visible arriba de las pantallas internas. */
+@Composable
+private fun BotonVolver(alPulsar: () -> Unit) {
+    val p = LocalPaleta.current
+    TextButton(
+        onClick = alPulsar, modifier = Modifier.padding(start = 8.dp, top = 4.dp).heightIn(min = 64.dp).semantics { contentDescription = "Volver" },
+        colors = ButtonDefaults.textButtonColors(contentColor = if (p.altoContraste) p.texto else p.acento(Acento.AZUL)),
+    ) {
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(32.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Volver", style = MaterialTheme.typography.labelLarge)
     }
 }

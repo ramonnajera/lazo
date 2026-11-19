@@ -3,6 +3,9 @@ package mx.lazo.app.ui
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,7 +18,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
+import mx.lazo.app.R
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -187,3 +193,79 @@ fun Ficha(texto: String, seleccionada: Boolean, alCambiar: (Boolean) -> Unit, mo
         }
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Color con significado: un chip de ícono por tema, filas de acción y el botón de hablar con Lazo.
+
+/** Círculo de color con el ícono en blanco (negro sobre amarillo en alto contraste). Solo decora: el texto siempre va al lado. */
+@Composable
+fun IconoChip(icono: ImageVector, acento: Acento, modifier: Modifier = Modifier, tam: androidx.compose.ui.unit.Dp = 48.dp) {
+    val p = LocalPaleta.current
+    Box(modifier.size(tam).clip(androidx.compose.foundation.shape.CircleShape).background(p.acento(acento)), contentAlignment = Alignment.Center) {
+        Icon(icono, contentDescription = null, tint = p.sobreAcento(), modifier = Modifier.size(tam * 0.58f))
+    }
+}
+
+/** La marca de Lazo: el lazo blanco sobre el azul de la app (el mismo dibujo del ícono de la aplicación). */
+@Composable
+fun LogoLazo(modifier: Modifier = Modifier, tam: androidx.compose.ui.unit.Dp = 48.dp) {
+    val p = LocalPaleta.current
+    Box(modifier.size(tam).clip(RoundedCornerShape(tam * 0.23f)).background(p.acento(Acento.AZUL)).semantics { contentDescription = "Lazo" }, contentAlignment = Alignment.Center) {
+        Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.size(tam * 1.0f), colorFilter = if (p.altoContraste) androidx.compose.ui.graphics.ColorFilter.tint(Color.Black) else null)
+    }
+}
+
+/** Fila de acción: chip de color + texto a la izquierda + flecha. Texto oscuro sobre blanco (≥ 7:1); el color va en el chip y el borde. */
+@Composable
+fun FilaAccion(texto: String, icono: ImageVector, acento: Acento, alPulsar: () -> Unit, modifier: Modifier = Modifier, detalle: String? = null, descripcion: String? = null) {
+    val p = LocalPaleta.current
+    Surface(
+        onClick = alPulsar, shape = FORMA, color = p.superficie, border = BorderStroke(if (p.altoContraste) 3.dp else 2.dp, if (p.altoContraste) p.texto else p.acento(acento)),
+        modifier = modifier.fillMaxWidth().heightIn(min = ALTO_BOTON).semantics { role = Role.Button; if (descripcion != null) contentDescription = descripcion },
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            IconoChip(icono, acento)
+            Column(Modifier.weight(1f)) {
+                Text(texto, style = MaterialTheme.typography.labelLarge, color = p.texto)
+                if (detalle != null) Text(detalle, style = MaterialTheme.typography.bodyMedium, color = p.textoSecundario)
+            }
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = p.textoSecundario, modifier = Modifier.size(28.dp))
+        }
+    }
+}
+
+/** El botón principal de la app: hablar con Lazo. Grande, azul, con el micrófono bien a la vista. */
+@Composable
+fun BotonHablar(alPulsar: () -> Unit, modifier: Modifier = Modifier) {
+    val p = LocalPaleta.current
+    Surface(
+        onClick = alPulsar, shape = FORMA, color = p.acento(Acento.AZUL).let { if (p.altoContraste) p.primario else it }, contentColor = if (p.altoContraste) p.sobrePrimario else Color.White,
+        border = if (p.altoContraste) BorderStroke(3.dp, p.texto) else null,
+        modifier = modifier.fillMaxWidth().heightIn(min = 88.dp).semantics { role = Role.Button; contentDescription = "Hablar con Lazo. Pulsa y dime qué necesitas: por ejemplo, ya la tomé, qué sigue, o mis citas." },
+    ) {
+        Row(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(Modifier.size(56.dp).clip(androidx.compose.foundation.shape.CircleShape).background(if (p.altoContraste) p.sobrePrimario else Color.White), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.Mic, contentDescription = null, tint = if (p.altoContraste) p.primario else p.acento(Acento.AZUL), modifier = Modifier.size(34.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text("Hablar con Lazo", style = MaterialTheme.typography.titleLarge)
+                Text("Pregunta o di «ya la tomé»", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+/** Botón flotante de hablar, siempre a la mano en las pestañas principales. */
+@Composable
+fun FabHablar(alPulsar: () -> Unit, modifier: Modifier = Modifier) {
+    val p = LocalPaleta.current
+    ExtendedFloatingActionButton(
+        onClick = alPulsar, modifier = modifier.heightIn(min = 64.dp).semantics { contentDescription = "Hablar con Lazo" },
+        containerColor = if (p.altoContraste) p.primario else p.acento(Acento.AZUL), contentColor = if (p.altoContraste) p.sobrePrimario else Color.White,
+        icon = { Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(30.dp)) },
+        text = { Text("Hablar", style = MaterialTheme.typography.labelLarge) },
+    )
+}
+
+/** Margen de las pantallas con pestañas: deja sitio abajo para el botón flotante de hablar. */
+val RellenoPantalla = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 104.dp)
