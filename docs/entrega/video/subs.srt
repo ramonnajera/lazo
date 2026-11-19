@@ -271,165 +271,161 @@ Lazo avisa de inmediato a su círculo de cuidado y le
 ofrece llamar al nueve, uno, uno.
 
 69
-00:03:21,236 --> 00:03:25,382
+00:03:21,236 --> 00:03:25,454
 Su mamá, Laura, se unió al círculo con un código de
 
 70
-00:03:25,422 --> 00:03:26,449
+00:03:25,494 --> 00:03:26,540
 seis dígitos.
 
 71
-00:03:26,489 --> 00:03:30,306
+00:03:26,580 --> 00:03:30,464
 Ve, solo en lectura, sus tomas, sus citas y sus
 
 72
-00:03:30,346 --> 00:03:34,328
+00:03:30,504 --> 00:03:34,556
 avisos, y el pedido de ayuda aparece primero, con
 
 73
-00:03:34,368 --> 00:03:34,903
+00:03:34,596 --> 00:03:35,140
 alarma.
 
 74
-00:03:34,943 --> 00:03:38,596
-Mateo puede quitarle el acceso cuando quiera.
-
-75
-00:03:39,736 --> 00:03:42,951
+00:03:36,280 --> 00:03:39,495
 En la computadora, Lazo vive en una barra en la
 
-76
-00:03:42,991 --> 00:03:45,029
+75
+00:03:39,535 --> 00:03:41,573
 parte superior de la pantalla.
 
-77
-00:03:45,069 --> 00:03:48,561
+76
+00:03:41,613 --> 00:03:45,105
 Muestra el mismo día, sincronizado con el teléfono,
 
-78
-00:03:48,601 --> 00:03:52,094
+77
+00:03:45,145 --> 00:03:48,638
 avisa de las tomas y de las citas, y el dictado por
 
-79
-00:03:52,134 --> 00:03:54,864
+78
+00:03:48,678 --> 00:03:51,408
 voz se procesa en la propia computadora.
 
-80
-00:03:56,004 --> 00:03:58,805
+79
+00:03:52,548 --> 00:03:55,349
 La accesibilidad es el centro del proyecto:
 
-81
-00:03:58,845 --> 00:04:01,976
+80
+00:03:55,389 --> 00:03:58,520
 contraste de al menos siete a uno, modo amarillo
 
-82
-00:04:02,016 --> 00:04:05,412
+81
+00:03:58,560 --> 00:04:01,956
 sobre negro, letra hasta el doble de tamaño, botones
 
-83
-00:04:05,452 --> 00:04:08,451
+82
+00:04:01,996 --> 00:04:04,995
 de al menos sesenta y cuatro puntos, lector de
 
-84
-00:04:08,491 --> 00:04:11,688
+83
+00:04:05,035 --> 00:04:08,232
 pantalla en cada elemento, y ningún estado que se
 
-85
-00:04:11,728 --> 00:04:13,340
+84
+00:04:08,272 --> 00:04:09,884
 comunique solo con color.
 
-86
-00:04:14,480 --> 00:04:18,084
+85
+00:04:11,024 --> 00:04:14,628
 Lazo también reúne las convocatorias de apoyo de la
 
-87
-00:04:18,124 --> 00:04:21,586
+86
+00:04:14,668 --> 00:04:18,130
 Secretaría de Desarrollo Humano y Bien Común, con
 
-88
-00:04:21,626 --> 00:04:25,159
+87
+00:04:18,170 --> 00:04:21,703
 las de discapacidad primero y el enlace oficial de
 
-89
-00:04:25,199 --> 00:04:25,802
+88
+00:04:21,743 --> 00:04:22,346
 cada una.
 
-90
-00:04:25,842 --> 00:04:27,088
+89
+00:04:22,386 --> 00:04:23,632
 No inventa fechas.
 
-91
-00:04:28,228 --> 00:04:30,866
+90
+00:04:24,772 --> 00:04:27,410
 El prototipo funciona de punta a punta:
 
-92
-00:04:30,906 --> 00:04:34,367
+91
+00:04:27,450 --> 00:04:30,911
 un servidor propio, la aplicación para Android y el
 
-93
-00:04:34,407 --> 00:04:35,946
+92
+00:04:30,951 --> 00:04:32,490
 asistente para Windows.
 
-94
-00:04:35,986 --> 00:04:39,310
+93
+00:04:32,530 --> 00:04:35,854
 Está respaldado por cuatrocientas cincuenta y dos
 
-95
-00:04:39,350 --> 00:04:42,743
+94
+00:04:35,894 --> 00:04:39,287
 pruebas automáticas, incluidas pruebas de pantalla
 
-96
-00:04:42,783 --> 00:04:44,940
+95
+00:04:39,327 --> 00:04:41,484
 con lector y con letra al doble.
 
+96
+00:04:42,624 --> 00:04:44,626
+Lazo ya se ha probado en casa:
+
 97
-00:04:46,080 --> 00:04:49,524
-Aún no hay resultados con personas usuarias reales,
+00:04:44,666 --> 00:04:47,554
+Ramón lo ha usado en el cuidado de su hijo.
 
 98
-00:04:49,564 --> 00:04:52,324
-así que, con honestidad, estas son metas:
+00:04:47,594 --> 00:04:51,026
+Lo que sigue es un piloto con veinte personas y sus
 
 99
-00:04:52,364 --> 00:04:55,671
-un piloto con veinte personas y sus cuidadores en
+00:04:51,066 --> 00:04:54,498
+cuidadores en seis meses, quinientos hogares en dos
 
 100
-00:04:55,711 --> 00:04:58,814
-seis meses, quinientos hogares en dos años con
+00:04:54,538 --> 00:04:57,765
+años con asociaciones y DIF municipales, y libre
 
 101
-00:04:58,854 --> 00:05:01,819
-asociaciones y DIF municipales, y libre para
+00:04:57,805 --> 00:05:00,080
+para cualquier persona del estado.
 
 102
-00:05:01,859 --> 00:05:03,800
-cualquier persona del estado.
-
-103
-00:05:04,940 --> 00:05:08,157
+00:05:01,220 --> 00:05:04,437
 Lazo es código abierto, sin cuentas ni pagos.
 
-104
-00:05:08,197 --> 00:05:11,922
+103
+00:05:04,477 --> 00:05:08,202
 Cualquier municipio, DIF o asociación puede instalar
 
-105
-00:05:11,962 --> 00:05:15,469
+104
+00:05:08,242 --> 00:05:11,749
 su propio servidor, con sus propios datos, en los
 
-106
-00:05:15,509 --> 00:05:18,364
+105
+00:05:11,789 --> 00:05:14,644
 sesenta y siete municipios de Chihuahua.
 
-107
-00:05:19,504 --> 00:05:22,589
+106
+00:05:15,784 --> 00:05:18,869
 Lazo devuelve el control a la persona, y
 
-108
-00:05:22,629 --> 00:05:24,933
+107
+00:05:18,909 --> 00:05:21,213
 tranquilidad a quien la cuida.
 
-109
-00:05:24,973 --> 00:05:26,808
+108
+00:05:21,253 --> 00:05:23,088
 Gracias por su atención.

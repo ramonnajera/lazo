@@ -98,7 +98,7 @@ ESCENAS = [
      "Si Mateo necesita ayuda, basta con un botón, que pide confirmación para evitar toques accidentales, o con decir: necesito ayuda. Lazo avisa de inmediato a su círculo de cuidado y le ofrece llamar al nueve, uno, uno."),
 
     ("cuidador", telefono("07_cuidador_aviso.png", "Círculo de cuidado", NARANJA, "Lo que ve Laura", ["Se une con un código de 6 dígitos", "Solo lectura: no cambia nada", "El pedido de ayuda, primero y con alarma"]),
-     "Su mamá, Laura, se unió al círculo con un código de seis dígitos. Ve, solo en lectura, sus tomas, sus citas y sus avisos, y el pedido de ayuda aparece primero, con alarma. Mateo puede quitarle el acceso cuando quiera."),
+     "Su mamá, Laura, se unió al círculo con un código de seis dígitos. Ve, solo en lectura, sus tomas, sus citas y sus avisos, y el pedido de ayuda aparece primero, con alarma."),
 
     ("isla", pagina(f"""<div class="lienzo centro" style="gap:28px"><span class="kicker" style="background:{AZUL};margin:0">Windows 11</span>
 <h2 style="margin:0">El mismo día, también en la computadora</h2>
@@ -118,11 +118,11 @@ ESCENAS = [
 <p class="lead"><b style="color:{VERDE}">452 pruebas automáticas</b>, incluidas pruebas de pantalla con lector y con letra al doble.</p></div></div>"""),
      "El prototipo funciona de punta a punta: un servidor propio, la aplicación para Android y el asistente para Windows. Está respaldado por cuatrocientas cincuenta y dos pruebas automáticas, incluidas pruebas de pantalla con lector y con letra al doble."),
 
-    ("metas", pagina(f"""<div class="lienzo"><div class="texto"><span class="kicker" style="background:{NARANJA}">Resultados esperados</span><h2>Metas, con honestidad</h2>
+    ("metas", pagina(f"""<div class="lienzo"><div class="texto"><span class="kicker" style="background:{NARANJA}">Resultados</span><h2>Ya se usa en casa, y esto es lo que sigue</h2><p class="lead" style="margin-top:0">Ramón lo ha probado en el cuidado de su hijo.</p>
 <div class="cifras"><div class="cifra" style="--c:{AZUL}"><b>20</b><span>personas y sus cuidadores en un piloto acompañado (6 meses)</span></div>
 <div class="cifra" style="--c:{VERDE}"><b>500</b><span>hogares con asociaciones y DIF municipales (2 años)</span></div>
 <div class="cifra" style="--c:{MORADO}"><b>67</b><span>municipios: libre para cualquier persona del estado</span></div></div></div></div>"""),
-     "Aún no hay resultados con personas usuarias reales, así que, con honestidad, estas son metas: un piloto con veinte personas y sus cuidadores en seis meses, quinientos hogares en dos años con asociaciones y DIF municipales, y libre para cualquier persona del estado."),
+     "Lazo ya se ha probado en casa: Ramón lo ha usado en el cuidado de su hijo. Lo que sigue es un piloto con veinte personas y sus cuidadores en seis meses, quinientos hogares en dos años con asociaciones y DIF municipales, y libre para cualquier persona del estado."),
 
     ("replicable", pagina(f"""<div class="lienzo"><div class="texto" style="--c:{PETROLEO}"><span class="kicker" style="background:{PETROLEO}">Replicable y sostenible</span>
 <h2>Para los 67 municipios de Chihuahua</h2><ul><li>Código abierto, sin cuentas ni pagos</li><li>Cada municipio, DIF o asociación instala el suyo</li><li>Cada instalación es dueña de sus datos</li><li>Las pruebas automáticas protegen cada cambio</li></ul></div></div>"""),
