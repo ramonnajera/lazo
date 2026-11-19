@@ -1,6 +1,6 @@
 /* Tokens del rediseño de la isla (spec 2026-10-26 §4). Única fuente de medidas y colores. */
 :root {
-  --island-w: 372px;
+  --island-w: 480px;
   --listen-w: 300px;
   --bar-h: 36px;
   --radius-bar: 16px;
@@ -92,7 +92,7 @@ html.island *, html.island *::before, html.island *::after {
 .isl[data-view="listening"] { width: var(--listen-w); border-radius: 0 0 var(--radius-bar) var(--radius-bar); }
 .isl[data-view="hidden"] { background: transparent; box-shadow: none; height: 4px; }
 
-.bar { display: flex; align-items: center; gap: 8px; height: var(--bar-h); padding: 0 12px; white-space: nowrap; }
+.bar { display: flex; align-items: center; gap: 6px; height: var(--bar-h); padding: 0 12px; white-space: nowrap; }
 .bar-time { font: inherit; font-weight: 600; letter-spacing: 0.2px; color: inherit; background: transparent; border: 0; padding: 3px 4px; margin: 0 -4px; border-radius: var(--chip-radius); cursor: pointer; }
 .bar-clock { font-weight: 600; letter-spacing: 0.2px; }
 .bar-logo { width: 20px; height: 20px; flex: none; border-radius: 6px; }
@@ -133,7 +133,9 @@ html.island *, html.island *::before, html.island *::after {
 .talk-row .talk-s { font-size: 11.5px; opacity: 0.9; }
 .count { background: var(--count-bg); color: var(--count-fg); border-radius: var(--chip-radius); padding: 3px 7px; font-weight: 700; font-size: var(--chip-size); flex: none; border: 0; font-family: inherit; cursor: pointer; }
 .bar-tail { display: flex; align-items: center; gap: 8px; margin-left: auto; min-width: 0; }
-.bar-next { color: var(--text-2); font: inherit; font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; border: 0; padding: 3px 4px; margin: 0 -4px; border-radius: var(--chip-radius); cursor: pointer; }
+.bar-next { display: flex; color: var(--text-2); font: inherit; font-size: 12px; min-width: 0; overflow: hidden; white-space: nowrap; background: transparent; border: 0; padding: 3px 4px; margin: 0 -4px; border-radius: var(--chip-radius); cursor: pointer; }
+.bar-next-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.bar-next-h { flex: none; white-space: pre; }
 .bar-next:hover { background: var(--edge); color: var(--text); }
 .count:hover { opacity: 0.85; }
 .count.zero { background: var(--hover); color: var(--text-2); }
@@ -147,7 +149,7 @@ html.island *, html.island *::before, html.island *::after {
 .isl { position: relative; }
 /* Escondida o detrás de la escucha/aviso, la barra no ocupa lugar pero se sigue midiendo. */
 /* Mismo gap y relleno que la barra sola (.isl[data-view="bar"] .bar): su ancho medido es el de la barra. */
-.isl .bar[aria-hidden="true"] { position: absolute; top: 0; left: 0; width: var(--island-w); pointer-events: none; gap: 8px; padding: 0 12px; }
+.isl .bar[aria-hidden="true"] { position: absolute; top: 0; left: 0; width: var(--island-w); pointer-events: none; gap: 6px; padding: 0 12px; }
 /* Píldora de escucha sobre la sección o el formulario abiertos. */
 .isl-listen-overlay { position: absolute; top: 0; left: 0; right: 0; z-index: 2; background: var(--bg); border-radius: 0 0 var(--radius-bar) var(--radius-bar); box-shadow: inset 0 0 0 1px var(--edge); }
 
@@ -281,7 +283,7 @@ html.island *, html.island *::before, html.island *::after {
 .al { color: var(--text); }
 .al-row { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; }
 .al-title { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.al-when { margin-left: auto; color: var(--text-2); font-size: 12px; flex: none; white-space: nowrap; }
+.al-when { margin-left: auto; color: var(--text-2); font-size: 12px; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .al-err { color: #ff9f98; font-size: 11px; padding: 0 14px 4px; text-align: center; }
 .al-btns { display: flex; justify-content: center; gap: 8px; padding: 0 0 10px; }
 .al-b { flex: none; white-space: nowrap; font: inherit; font-size: 12px; padding: 5px 12px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.09); color: var(--text); cursor: pointer; }
@@ -368,3 +370,19 @@ html.island *, html.island *::before, html.island *::after {
 .crow.apoyo { height: auto; min-height: var(--row-h); align-items: flex-start; padding: 6px; }
 .crow.apoyo .txt { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; }
 .crow.apoyo .undo { align-self: center; }
+
+/* Encabezado de Hoy: título y fecha a la izquierda, «Necesito ayuda» a la derecha. */
+.hoy-head-l { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.hoy-head-l .hoy-date { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hoy-sub { display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 2px; font-size: 11px; font-weight: 650; color: var(--text-2); }
+.fm-small:hover { background: var(--hover); color: var(--text); }
+
+/* «Necesito ayuda»: rojo de Lazo pero discreto (contorno), y en dos pasos. */
+.ayuda-b { flex: none; height: 24px; padding: 0 10px; border-radius: 999px; border: 1.5px solid #ff8a8a; background: transparent; color: #ffb4b4; font: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.ayuda-b:hover, .ayuda-b[aria-expanded="true"] { background: var(--lazo-rojo); color: #fff; }
+.ayuda-on { margin: 0 0 6px; background: rgba(143, 19, 19, 0.22); border-radius: 12px; padding: 8px 10px; box-shadow: inset 0 0 0 1px rgba(255, 138, 138, 0.5); }
+.ayuda-q { font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+.ayuda-btns { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
+.ayuda-si { background: var(--lazo-rojo); color: #fff; font-weight: 700; box-shadow: inset 0 0 0 1px #ff8a8a; }
+.ayuda-si:hover { background: #a91a1a; }
+.hoy-card .st { margin-left: 0; }

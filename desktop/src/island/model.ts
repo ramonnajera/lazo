@@ -31,8 +31,8 @@ export interface IslandOpts {
   typing?: boolean;
 }
 
-export const WIN_W = 400;
-export const ISLAND_W = 372;
+export const WIN_W = 508;
+export const ISLAND_W = 480;
 export const STRIP_H = 4;
 export const LISTEN_W = 300;
 

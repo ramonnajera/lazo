@@ -87,7 +87,7 @@ export default function Connection({ config, saveConfig }: Props) {
     <div className="max-w-md space-y-5">
       <h1 className="text-lg font-semibold">Conexión</h1>
       <Field label="Soy nueva o nuevo en Lazo">
-        <CrearPerfil onListo={async () => { await getTomas(); setResult({ ok: true, text: "✓ Perfil creado" }); }} />
+        <CrearPerfil enConfig onListo={async () => { await getTomas(); setResult({ ok: true, text: "✓ Perfil creado" }); }} />
       </Field>
       <Field label="O entra con un código de 6 dígitos de otro dispositivo">
         <div className="flex gap-2">
@@ -98,7 +98,7 @@ export default function Connection({ config, saveConfig }: Props) {
         </div>
       </Field>
       <details className="space-y-3">
-        <summary className="cursor-pointer text-sm text-white/70">Opciones avanzadas (servidor propio y token)</summary>
+        <summary className="cursor-pointer text-sm text-neutral-600 dark:text-neutral-300">Opciones avanzadas (servidor propio y token)</summary>
       <Field label="Servidor de Lazo">
         <input className={inputCls} value={url} onChange={(e) => setUrl(e.target.value)} spellCheck={false} />
       </Field>

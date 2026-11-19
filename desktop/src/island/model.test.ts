@@ -153,11 +153,11 @@ describe("island model", () => {
   });
 
   it("strip_tracks_bar_width", () => {
-    expect(regionFor("hidden", null, 274)).toEqual({ x: 63, y: 0, w: 274, h: 4 });
-    expect(regionFor("hidden", { w: 372, h: 324 }, 300)).toEqual({ x: 50, y: 0, w: 300, h: 4 });
-    expect(regionFor("hidden", null, null)).toEqual({ x: 14, y: 0, w: 372, h: 4 });
-    expect(regionFor("hidden", null, 500)).toEqual({ x: 14, y: 0, w: 372, h: 4 });
-    expect(regionFor("bar", { w: 274, h: 36 }, 300)).toEqual({ x: 63, y: 0, w: 274, h: 36 });
+    expect(regionFor("hidden", null, 274)).toEqual({ x: 117, y: 0, w: 274, h: 4 });
+    expect(regionFor("hidden", { w: 480, h: 324 }, 300)).toEqual({ x: 104, y: 0, w: 300, h: 4 });
+    expect(regionFor("hidden", null, null)).toEqual({ x: 14, y: 0, w: 480, h: 4 });
+    expect(regionFor("hidden", null, 500)).toEqual({ x: 14, y: 0, w: 480, h: 4 });
+    expect(regionFor("bar", { w: 274, h: 36 }, 300)).toEqual({ x: 117, y: 0, w: 274, h: 36 });
   });
 
   it("grow_region_only_when_the_view_changes_and_grows", () => {
@@ -167,42 +167,42 @@ describe("island model", () => {
     expect(growRegion(init, { type: "hover" }, { hovering: true, paused: true }, ctx())).toBeNull();
     expect(growRegion(m("bar"), { type: "section", section: "citas" }, { hovering: true, paused: true }, ctx())).toBeNull();
     // Hover real: la barra prevista, antes de confirmar.
-    expect(growRegion(init, { type: "hover" }, on, ctx())).toEqual({ x: 60, y: 0, w: 280, h: 36 });
+    expect(growRegion(init, { type: "hover" }, on, ctx())).toEqual({ x: 114, y: 0, w: 280, h: 36 });
     // Barra → abierta / música, y teclado/bandeja/aviso/escucha.
     const bar = regionFor("bar", { w: 280, h: 36 });
-    expect(growRegion(m("bar"), { type: "section", section: "citas" }, on, ctx(bar))).toEqual({ x: 14, y: 0, w: 372, h: 360 });
-    expect(growRegion(m("bar"), { type: "music" }, on, ctx(bar))).toEqual({ x: 14, y: 0, w: 372, h: 360 });
-    expect(growRegion(init, { type: "toggle" }, off, ctx())).toEqual({ x: 60, y: 0, w: 280, h: 36 });
-    expect(growRegion(init, { type: "openChat" }, off, ctx())).toEqual({ x: 14, y: 0, w: 372, h: 360 });
-    expect(growRegion(init, { type: "alert" }, off, ctx())).toEqual({ x: 14, y: 0, w: 372, h: 73 });
-    expect(growRegion(init, { type: "listenStart" }, off, ctx())).toEqual({ x: 50, y: 0, w: 300, h: 40 });
+    expect(growRegion(m("bar"), { type: "section", section: "citas" }, on, ctx(bar))).toEqual({ x: 14, y: 0, w: 480, h: 360 });
+    expect(growRegion(m("bar"), { type: "music" }, on, ctx(bar))).toEqual({ x: 14, y: 0, w: 480, h: 360 });
+    expect(growRegion(init, { type: "toggle" }, off, ctx())).toEqual({ x: 114, y: 0, w: 280, h: 36 });
+    expect(growRegion(init, { type: "openChat" }, off, ctx())).toEqual({ x: 14, y: 0, w: 480, h: 360 });
+    expect(growRegion(init, { type: "alert" }, off, ctx())).toEqual({ x: 14, y: 0, w: 480, h: 73 });
+    expect(growRegion(init, { type: "listenStart" }, off, ctx())).toEqual({ x: 104, y: 0, w: 300, h: 40 });
     // Lo ya medido manda sobre lo supuesto.
-    expect(growRegion(m("bar"), { type: "section", section: "citas" }, on, { known: { "open:citas": { w: 372, h: 200 } }, barW: 280, sent: bar })).toEqual({
+    expect(growRegion(m("bar"), { type: "section", section: "citas" }, on, { known: { "open:citas": { w: 480, h: 200 } }, barW: 280, sent: bar })).toEqual({
       x: 14,
       y: 0,
-      w: 372,
+      w: 480,
       h: 200,
     });
     // Sin cambio de vista, o si encoge: nada (se ajusta tras confirmar).
-    expect(growRegion(m("open"), { type: "section", section: "citas" }, on, ctx(regionFor("open", { w: 372, h: 324 })))).toBeNull();
-    expect(growRegion(m("open"), { type: "escape" }, on, ctx(regionFor("open", { w: 372, h: 324 })))).toBeNull();
-    expect(growRegion(m("form"), { type: "listenStart" }, on, ctx(regionFor("form", { w: 372, h: 360 })))).toBeNull();
+    expect(growRegion(m("open"), { type: "section", section: "citas" }, on, ctx(regionFor("open", { w: 480, h: 324 })))).toBeNull();
+    expect(growRegion(m("open"), { type: "escape" }, on, ctx(regionFor("open", { w: 480, h: 324 })))).toBeNull();
+    expect(growRegion(m("form"), { type: "listenStart" }, on, ctx(regionFor("form", { w: 480, h: 360 })))).toBeNull();
   });
 
   it("regionFor_hidden_is_strip", () => {
-    expect(regionFor("hidden", null)).toEqual({ x: 14, y: 0, w: 372, h: 4 });
-    expect(regionFor("bar", null)).toEqual({ x: 14, y: 0, w: 372, h: 4 });
-    expect(regionFor("hidden", { w: 300, h: 40 })).toEqual({ x: 14, y: 0, w: 372, h: 4 });
+    expect(regionFor("hidden", null)).toEqual({ x: 14, y: 0, w: 480, h: 4 });
+    expect(regionFor("bar", null)).toEqual({ x: 14, y: 0, w: 480, h: 4 });
+    expect(regionFor("hidden", { w: 300, h: 40 })).toEqual({ x: 14, y: 0, w: 480, h: 4 });
   });
 
   it("regionFor_centers_measured_rect", () => {
-    expect(regionFor("listening", { w: 300, h: 40 })).toEqual({ x: 50, y: 0, w: 300, h: 40 });
-    expect(regionFor("open", { w: 372, h: 200 })).toEqual({ x: 14, y: 0, w: 372, h: 200 });
+    expect(regionFor("listening", { w: 300, h: 40 })).toEqual({ x: 104, y: 0, w: 300, h: 40 });
+    expect(regionFor("open", { w: 480, h: 200 })).toEqual({ x: 14, y: 0, w: 480, h: 200 });
   });
 
   it("standalone_listening_predicts_the_recording_pill_not_the_last_reply_size", () => {
     const ctx = { known: { listening: { w: 300, h: 160 } }, barW: 280, sent: stripFor(280) };
-    expect(growRegion(m("bar"), { type: "listenStart" }, on, ctx)).toEqual({ x: 50, y: 0, w: 300, h: 40 });
+    expect(growRegion(m("bar"), { type: "listenStart" }, on, ctx)).toEqual({ x: 104, y: 0, w: 300, h: 40 });
     // Sobre una sección abierta se conserva el tamaño conocido de la tarjeta (no se toca aquí).
     expect(growRegion(m("hidden"), { type: "alert" }, on, { ...ctx, known: {} })?.h).toBe(73);
   });
@@ -264,7 +264,7 @@ describe("island model", () => {
 
   it("open_rect_is_remembered_per_section", () => {
     const bar = regionFor("bar", { w: 280, h: 36 });
-    const ctx = { known: { "open:citas": { w: 372, h: 200 }, "open:chat": { w: 372, h: 340 } }, barW: 280, sent: bar };
+    const ctx = { known: { "open:citas": { w: 480, h: 200 }, "open:chat": { w: 480, h: 340 } }, barW: 280, sent: bar };
     expect(growRegion(m("bar"), { type: "section", section: "citas" }, on, ctx)?.h).toBe(200);
     expect(growRegion(m("bar"), { type: "section", section: "chat" }, on, ctx)?.h).toBe(340);
     // Sección sin medir: lo supuesto.
@@ -272,7 +272,7 @@ describe("island model", () => {
   });
 
   it("region_uses_measured_left_and_real_window_width", () => {
-    expect(regionFor("open", { x: 13.5, w: 372, h: 200 })).toEqual({ x: 13.5, y: 0, w: 372, h: 200 });
+    expect(regionFor("open", { x: 13.5, w: 480, h: 200 })).toEqual({ x: 13.5, y: 0, w: 480, h: 200 });
     expect(regionFor("hidden", null, 300, 402)).toEqual({ x: 51, y: 0, w: 300, h: 4 });
     expect(stripFor(300, 402)).toEqual({ x: 51, y: 0, w: 300, h: 4 });
     expect(regionFor("bar", { w: 280, h: 36 }, 280, 402)).toEqual({ x: 61, y: 0, w: 280, h: 36 });

@@ -49,14 +49,14 @@ describe("Bar", () => {
     const onSection = vi.fn();
     render(<Bar {...base} onSection={onSection} tomas={[toma({ hora: "08:00", estado: "tomada" }), toma({ hora: "20:00" }), toma({ medicamentoId: "b", nombre: "Losartán", hora: "21:30" })]} />);
     expect(screen.getByLabelText("2 tomas pendientes hoy").textContent).toBe("2");
-    fireEvent.click(screen.getByText("Metformina · 8:00 pm"));
+    fireEvent.click(screen.getByRole("button", { name: /Metformina · 8:00 pm/ }));
     expect(onSection).toHaveBeenCalledWith("hoy");
   });
 
   it("una_toma_que_ya_toca_se_marca_como_urgente_con_su_texto", () => {
     const { container } = render(<Bar {...base} tomas={[toma({ estado: "atrasada", hora: "12:00" })]} />);
     expect(container.querySelector(".count.urgent")).toBeTruthy();
-    expect(screen.getByTitle("Es hora de esta medicina")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Es hora de Metformina · 12:00 pm$/ })).toBeTruthy();
   });
 
   it("escondida_sigue_montada_pero_invisible_y_sin_reloj_vivo", () => {

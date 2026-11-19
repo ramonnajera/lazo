@@ -28,4 +28,9 @@ describe("crear perfil (primer uso)", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Crear mi perfil" })); });
     expect(screen.getByText("este servidor no admite más personas")).toBeTruthy();
   });
+
+  it("en_configuracion_no_usa_texto_blanco_que_no_se_ve_en_tema_claro", () => {
+    const { container } = render(<CrearPerfil enConfig />);
+    expect(container.innerHTML).not.toMatch(/(text|bg)-white\//);
+  });
 });

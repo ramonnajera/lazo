@@ -142,11 +142,7 @@ export default function Island() {
     [send, opts],
   );
 
-  // En el recorrido de medición los avisos reales no se mezclan con el simulado.
-  const alertGo = useCallback((e: IslandEvent) => {
-    go(e);
-  }, [go]);
-  const alerts = useAlerts(view, isActive(listenState), alertGo);
+  const alerts = useAlerts(view, isActive(listenState), go);
   const curAlerts = alerts.current;
 
   // Datos de la barra: almacenes compartidos con avisos y secciones (sin peticiones extra).
@@ -188,7 +184,7 @@ export default function Island() {
     if (!el) return;
     const v = viewRef.current;
     const r = el.getBoundingClientRect();
-    // Borde izquierdo medido (no supuesto): la región coincide con lo que se dibuja aunque la ventana no mida 400.
+    // Borde izquierdo medido (no supuesto): la región coincide con lo que se dibuja aunque la ventana no mida 508.
     const x = Math.floor(r.left);
     const rect = { x, w: Math.ceil(r.right - x), h: Math.ceil(r.height) };
     // Dictando sobre una sección o un formulario, el rectángulo es el de la tarjeta, no el de la píldora.
@@ -407,12 +403,6 @@ export default function Island() {
     },
     [go],
   );
-  useEffect(() => {
-    // Espera a conocer el modo (la consulta es asíncrona).
-    const t = setTimeout(() => {
-    }, 1500);
-    return () => clearTimeout(t);
-  }, [go]);
   const openSettings = useCallback(() => void invoke("open_settings", { section: null }).catch(() => {}), []);
 
   // Dictando sobre una sección o un formulario: siguen visibles (y con el foco en su campo, para que

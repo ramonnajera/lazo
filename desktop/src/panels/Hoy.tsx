@@ -1,4 +1,5 @@
 import { IconMic } from "../ui/icons";
+import { AyudaBoton } from "./Ayuda";
 import { useState } from "react";
 import { registrarToma } from "../api/client";
 import type { Estado, Toma } from "../api/types";
@@ -25,6 +26,24 @@ export const requiereAtencion = (t: Toma) => t.estado === "ahora" || t.estado ==
 /** La toma que toca ahora, o la que sigue. */
 export function siguienteToma(items: Toma[]): Toma | undefined {
   return items.find(requiereAtencion) ?? items.find((t) => t.estado === "pendiente" || t.estado === "pospuesta");
+}
+
+/**
+ * Resumen del día para escucharlo de una vez (sin recorrer la lista con la vista o el lector de pantalla):
+ * lo que toca ya, lo que falta con su hora y cuántas van tomadas.
+ */
+export function resumenDia(items: Toma[]): string {
+  if (!items.length) return "Hoy no tienes tomas programadas.";
+  const urgentes = items.filter(requiereAtencion);
+  const faltan = items.filter((t) => t.estado === "pendiente" || t.estado === "pospuesta");
+  const tomadas = items.filter((t) => t.estado === "tomada").length;
+  const partes: string[] = [];
+  const nom = (t: Toma) => `${t.nombre}${t.dosis ? ` ${t.dosis}` : ""}`;
+  if (urgentes.length) partes.push(`Ya toca: ${urgentes.map((t) => `${nom(t)}, de las ${hora12(t.hora)}`).join("; ")}.`);
+  if (faltan.length) partes.push(`${faltan.length === 1 ? "Falta" : `Faltan ${faltan.length} tomas`}: ${faltan.map((t) => `${nom(t)} a las ${hora12(t.estado === "pospuesta" && t.hasta ? t.hasta.hora : t.hora)}`).join("; ")}.`);
+  if (!urgentes.length && !faltan.length) partes.push("Todo al día: no te falta ninguna toma.");
+  partes.push(tomadas === 1 ? "Llevas 1 tomada." : `Llevas ${tomadas} tomadas.`);
+  return partes.join(" ");
 }
 
 /** `corto`: en la lista solo cabe «Tomada»; el detalle (la hora) va en la tarjeta grande y en el texto para lectores de pantalla. */
@@ -57,10 +76,13 @@ export function HoyPanel({ items, today, onTalk }: { items: Toma[]; today: strin
 
   return (
     <div>
-      <div className="pf-head">
-        <span className="pf-title">Hoy</span>
-        <span className="hoy-date">{fechaLarga(today)}</span>
-      </div>
+      {/* «Necesito ayuda» va arriba: siempre a la vista, sin desplazar la sección. */}
+      <AyudaBoton>
+        <span className="hoy-head-l">
+          <span className="pf-title">Hoy</span>
+          <span className="hoy-date">{fechaLarga(today)}</span>
+        </span>
+      </AyudaBoton>
       {onTalk && (
         <button type="button" className="talk-row" onClick={onTalk} aria-label="Hablar con Lazo. Pregunta o di: ya la tomé.">
           <span className="talk-ic" aria-hidden><IconMic /></span>
@@ -93,6 +115,14 @@ export function HoyPanel({ items, today, onTalk }: { items: Toma[]; today: strin
         </section>
       ) : (
         <div className="cempty">{items.length ? "Todo al día: no tienes tomas pendientes hoy." : "Hoy no tienes tomas programadas."}</div>
+      )}
+      {items.length > 0 && (
+        <div className="hoy-sub">
+          <span>Tomas de hoy</span>
+          <button type="button" className="fm-small" onClick={() => hablar(resumenDia(items), { forzar: true })} aria-label="Escuchar mi día: leer en voz alta las tomas de hoy">
+            Escuchar mi día
+          </button>
+        </div>
       )}
       <div className="list-scroll">
         {items.map((t) => (

@@ -13,13 +13,13 @@ pub const SETTINGS: &str = "settings";
 
 /// Tamaño lógico fijo de la ventana de la isla: ningún cambio de estado la redimensiona; lo
 /// visible se recorta con una región de Win32 (`set_island_region`).
-pub const WIN_W: f64 = 400.0;
+pub const WIN_W: f64 = 508.0;
 pub const WIN_H: f64 = 360.0;
 /// Ancho lógico de la isla (todas las vistas) y alto de la franja escondida.
-const STRIP_W: f64 = 372.0;
+const STRIP_W: f64 = 480.0;
 const STRIP_H: f64 = 4.0;
 
-/// Franja escondida: 372 × 4 arriba al centro de la ventana.
+/// Franja escondida: 480 × 4 arriba al centro de la ventana.
 pub const HIDDEN_STRIP: LogicalRect = LogicalRect { x: (WIN_W - STRIP_W) / 2.0, y: 0.0, w: STRIP_W, h: STRIP_H };
 
 /// Última región lógica pedida por la interfaz (se vuelve a aplicar al recolocar la ventana).
@@ -42,7 +42,7 @@ fn pick_monitor(app: &AppHandle, pref: Option<&str>) -> Option<Monitor> {
     app.primary_monitor().ok().flatten().or_else(|| monitors.into_iter().next())
 }
 
-/// Coloca la ventana fija (400 × 360 lógicos) arriba al centro del monitor elegido y le vuelve a
+/// Coloca la ventana fija (508 × 360 lógicos) arriba al centro del monitor elegido y le vuelve a
 /// aplicar la región vigente. Solo al arrancar y al cambiar la configuración: ningún estado de
 /// la interfaz la mueve ni la redimensiona. Todo corre en el hilo principal para que mover,
 /// redimensionar y recortar queden en orden; si Windows reescala la ventana después

@@ -67,3 +67,14 @@ export const actualizarConvocatorias = () => request("POST", "/convocatorias/act
 export async function sendMessage(texto: string): Promise<{ reply: string }> {
   return (await request("POST", "/voz", { texto })) as { reply: string };
 }
+
+// --- Necesito ayuda: avisa a los cuidadores de la persona ---
+export interface AvisoAyuda {
+  ayuda: { id: string; fecha: string; hora: string; mensaje: string };
+  cuidadores: number;
+}
+export async function pedirAyuda(mensaje?: string): Promise<AvisoAyuda> {
+  const r = await request("POST", "/ayuda", mensaje?.trim() ? { mensaje: mensaje.trim() } : {});
+  const a = r.ayuda ?? {};
+  return { ayuda: { id: str(a.id), fecha: str(a.fecha), hora: str(a.hora), mensaje: str(a.mensaje) }, cuidadores: typeof r.cuidadores === "number" ? r.cuidadores : 0 };
+}

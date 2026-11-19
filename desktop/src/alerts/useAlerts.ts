@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { getTomas, registrarToma } from "../api/client";
+import { getCitas, getTomas, registrarToma } from "../api/client";
 import { useConfig } from "../config/useConfig";
 import { refreshKeys, usePanelData } from "../panels/usePanelData";
 import type { IslandEvent, View } from "../island/model";
 import { hablar } from "../voice/habla";
-import { dueAlerts, type Alert } from "./due";
+import { dueAlerts, dueCitas, fraseAviso, type Alert } from "./due";
 import { useAutoClose } from "./useAutoClose";
 
 const SNOOZE_MS = 10 * 60_000;
@@ -76,6 +76,8 @@ export interface AlertsApi {
 export function useAlerts(state: View, listening: boolean, dispatch: (e: IslandEvent) => void): AlertsApi {
   const { config } = useConfig();
   const { data } = usePanelData("tomas", getTomas);
+  // Las citas comparten almacén con su sección: el recordatorio no hace peticiones extra.
+  const { data: citas } = usePanelData("citas", getCitas);
   const [current, setCurrent] = useState<Alert[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const shown = useRef<Set<string>>(loadShown());
@@ -101,18 +103,21 @@ export function useAlerts(state: View, listening: boolean, dispatch: (e: IslandE
   const closed = cardFrom(state);
 
   useEffect(() => {
-    if (!config || !data || !canShow || busy.current) return;
+    if (!config || (!data && !citas) || !canShow || busy.current) return;
     let alive = true;
     // Aviso que quedó esperando a que terminara el dictado.
     if (current) {
       if (closed) dispatch({ type: "alert" });
       return;
     }
-    const due = dueAlerts(data.tomas, new Date(), shown.current, snoozed.current);
-    // Las tomas que coinciden en la hora se juntan en una tarjeta.
+    const now = new Date();
+    // Las medicinas van primero; el recordatorio de una cita sale cuando no hay dosis pendientes de avisar.
+    const dosis = dueAlerts(data?.tomas ?? [], now, shown.current, snoozed.current);
+    const due: Alert[] = dosis.length ? dosis : dueCitas(citas ?? [], now, shown.current);
+    // Las tomas que coinciden en la hora se juntan en una tarjeta (las citas, una por una).
     const first = due[0];
     if (!first) return;
-    const batch = due.filter((a) => a.at.getTime() === first.at.getTime());
+    const batch = first.kind === "cita" ? [first] : due.filter((a) => a.at.getTime() === first.at.getTime());
     busy.current = true;
     const check = config.alerts.dndFullscreen ? invoke<boolean>("is_fullscreen_busy").catch(() => false) : Promise.resolve(false);
     check
@@ -122,7 +127,7 @@ export function useAlerts(state: View, listening: boolean, dispatch: (e: IslandE
         saveShown(shown.current);
         setError(null);
         setCurrent(batch);
-        hablar(batch.length > 1 ? `Es hora de tus medicinas: ${batch.map((a) => a.title).join(", ")}.` : `Es hora de ${batch[0].title}${batch[0].detail ? `, ${batch[0].detail}` : ""}.`);
+        hablar(fraseAviso(batch, now));
         if (closed) dispatch({ type: "alert" });
       })
       .finally(() => {
@@ -131,7 +136,7 @@ export function useAlerts(state: View, listening: boolean, dispatch: (e: IslandE
     return () => {
       alive = false;
     };
-  }, [config, data, canShow, closed, current, tick, dispatch]);
+  }, [config, data, citas, canShow, closed, current, tick, dispatch]);
 
   const close = useCallback(() => {
     setCurrent(null);
@@ -143,6 +148,7 @@ export function useAlerts(state: View, listening: boolean, dispatch: (e: IslandE
     if (current) {
       const until = new Date(Date.now() + SNOOZE_MS);
       for (const a of current) {
+        if (a.kind !== "dosis") continue;
         shown.current.delete(a.id);
         snoozed.current.set(a.id, until);
         // El servidor (y el cuidador) también se enteran de que se pospuso
@@ -156,7 +162,10 @@ export function useAlerts(state: View, listening: boolean, dispatch: (e: IslandE
 
   const done = useCallback(() => {
     if (!current) return close();
-    Promise.all(current.map((a) => registrarToma(a.toma, "tomada"))).then(
+    // Un recordatorio de cita no registra nada: «Entendido» solo lo cierra.
+    const dosis = current.flatMap((a) => (a.kind === "dosis" ? [a] : []));
+    if (!dosis.length) return close();
+    Promise.all(dosis.map((a) => registrarToma(a.toma, "tomada"))).then(
       () => {
         refreshKeys("tomas");
         hablar("Listo, registrado.");

@@ -43,8 +43,9 @@ function Settings() {
           <button
             key={s.id}
             onClick={() => setSection(s.id)}
+            aria-current={section === s.id ? "page" : undefined}
             className={`block w-full rounded-md px-3 py-2 text-left text-sm ${
-              section === s.id ? "bg-neutral-200 font-medium dark:bg-neutral-700" : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              section === s.id ? "bg-[#0B3D91] font-medium text-white" : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
             }`}
           >
             {s.label}

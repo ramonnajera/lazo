@@ -98,9 +98,11 @@ export default function Bar({ tomas, active, onSection, onSettings, hidden = fal
             {pendientes}
           </button>
         )}
-        {nextText && (
-          <button type="button" className="bar-next" title={urgente ? "Es hora de esta medicina" : "Siguiente toma"} onClick={() => onSection("hoy")}>
-            {nextText}
+        {sig && (
+          // Si el nombre es muy largo se acorta el nombre, nunca la hora.
+          <button type="button" className="bar-next" aria-label={`${urgente ? "Es hora de" : "Siguiente toma:"} ${nextText}`} title={nextText} onClick={() => onSection("hoy")}>
+            <span className="bar-next-n">{sig.nombre}</span>
+            <span className="bar-next-h"> · {hora12(sig.hora)}</span>
           </button>
         )}
       </span>
