@@ -14,10 +14,12 @@ function minutosDe(t) {
   return 10;
 }
 
-/** → { tipo: 'tomada' | 'posponer' | 'omitir' | 'siguiente' | 'hoy' | 'citas' | 'convocatorias' | 'ayuda' | 'desconocido', minutos? } */
+/** → { tipo: 'pedir-ayuda' | 'tomada' | 'posponer' | 'omitir' | 'siguiente' | 'hoy' | 'citas' | 'convocatorias' | 'ayuda' | 'desconocido', minutos? } */
 function interpretar(frase) {
   const t = normalizar(frase);
   if (!t) return { tipo: 'desconocido' };
+  // Pedir ayuda va antes que todo: «auxilio, no la tomé» es primero un aviso al círculo. «Ayuda» sola es la lista de órdenes.
+  if (contiene(t, 'necesito ayuda', 'auxilio', 'emergencia', 'ayudenme', 'socorro')) return { tipo: 'pedir-ayuda' };
   // «No la tomaré» debe ganarle a «tomé»
   if (contiene(t, 'omitir', 'omito', 'omite', 'saltar', 'salta', 'salto', 'no la tomare', 'no lo tomare', 'no la voy a tomar', 'no lo voy a tomar', 'no la tome', 'no lo tome')) return { tipo: 'omitir' };
   if (contiene(t, 'pospon', 'pospone', 'posponer', 'pospongo', 'mas tarde', 'despues', 'recuerdame en', 'recuerdamelo en')) return { tipo: 'posponer', minutos: minutosDe(t) };
@@ -30,6 +32,6 @@ function interpretar(frase) {
   return { tipo: 'desconocido' };
 }
 
-const AYUDA_VOZ = 'Puedes decir: ya la tomé. Pospón diez minutos. Omitir. Qué sigue. Qué tengo hoy. Mis citas. O convocatorias.';
+const AYUDA_VOZ = 'Puedes decir: ya la tomé. Pospón diez minutos. Omitir. Qué sigue. Qué tengo hoy. Mis citas. O convocatorias. Si te pasa algo, di: necesito ayuda, y aviso a tus cuidadores.';
 
 module.exports = { interpretar, AYUDA_VOZ };

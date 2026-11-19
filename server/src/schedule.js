@@ -34,7 +34,10 @@ function statusOf(dose, toma, nowLocal, tolerancia = TOLERANCIA_MIN) {
   if (toma && toma.estado === 'pospuesta' && toma.hasta) {
     const hasta = T.absMin(toma.hasta.fecha, toma.hasta.hora);
     if (now < hasta) return { estado: 'pospuesta', hasta: toma.hasta };
-    return { estado: now < hasta + tolerancia ? 'ahora' : 'atrasada' };
+    // Posponer una dosis que aún no tocaba no la adelanta: sigue rigiendo su propia hora.
+    const ref = Math.max(hasta, due);
+    if (now < ref) return { estado: 'pendiente' };
+    return { estado: now < ref + tolerancia ? 'ahora' : 'atrasada' };
   }
   if (now < due) return { estado: 'pendiente' };
   return { estado: now < due + tolerancia ? 'ahora' : 'atrasada' };
@@ -46,11 +49,25 @@ function dayView(data, date, nowLocal, tolerancia = TOLERANCIA_MIN) {
   return dosesFor(data.medicamentos, date).map((d) => ({ ...d, ...statusOf(d, byKey.get(keyOf(d.medicamentoId, d.fecha, d.hora)), nowLocal, tolerancia) }));
 }
 
+/**
+ * Dosis de ayer que siguen abiertas pasada la medianoche: la de las 23:50 sigue siendo «ahora» a las 00:05, y una
+ * pospuesta a las 23:55 sigue «pospuesta» a las 00:02. (Las atrasadas de ayer no: esas ya son alerta.)
+ */
+function abiertasDeAyer(data, nowLocal, tolerancia = TOLERANCIA_MIN) {
+  return dayView(data, T.addDays(nowLocal.date, -1), nowLocal, tolerancia).filter((d) => d.estado === 'ahora' || d.estado === 'pospuesta');
+}
+
+/** Las dosis que se pueden confirmar ahora, en orden: las abiertas de ayer y luego las de hoy. */
+function candidatas(data, nowLocal, tolerancia = TOLERANCIA_MIN) {
+  return [...abiertasDeAyer(data, nowLocal, tolerancia), ...dayView(data, nowLocal.date, nowLocal, tolerancia)];
+}
+
 /** La siguiente dosis que requiere atención: la que toca ahora, o la próxima de hoy o de los días siguientes. */
 function nextDose(data, nowLocal, tolerancia = TOLERANCIA_MIN) {
+  const ayer = abiertasDeAyer(data, nowLocal, tolerancia);
   for (let i = 0; i < 8; i++) {
     const date = T.addDays(nowLocal.date, i);
-    const open = dayView(data, date, nowLocal, tolerancia).filter((d) => ['ahora', 'atrasada', 'pendiente', 'pospuesta'].includes(d.estado));
+    const open = [...(i === 0 ? ayer : []), ...dayView(data, date, nowLocal, tolerancia)].filter((d) => ['ahora', 'atrasada', 'pendiente', 'pospuesta'].includes(d.estado));
     if (!open.length) continue;
     const urgent = open.find((d) => d.estado === 'ahora') || open.find((d) => d.estado === 'atrasada');
     return urgent || open[0];
@@ -58,4 +75,4 @@ function nextDose(data, nowLocal, tolerancia = TOLERANCIA_MIN) {
   return null;
 }
 
-module.exports = { dosesFor, statusOf, dayView, nextDose, keyOf, TOLERANCIA_MIN };
+module.exports = { dosesFor, statusOf, dayView, nextDose, candidatas, keyOf, TOLERANCIA_MIN };

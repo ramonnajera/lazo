@@ -4,7 +4,7 @@ Node.js 20 o superior, **sin dependencias**. Guarda todo en un archivo JSON (per
 
 ```bash
 cd server
-npm test                      # 46 pruebas
+npm test                      # 111 pruebas
 LAZO_HOST=0.0.0.0 npm start   # http://0.0.0.0:18800
 ```
 
@@ -36,13 +36,43 @@ Todo con `Authorization: Bearer lzo_…`, JSON en español.
 | `GET /proxima` | todos | La toma que sigue (o la que toca ahora) |
 | `GET/POST /citas` · `PATCH/DELETE /citas/:id` | todos / persona | Agenda de consultas |
 | `GET /mediciones` · `POST /mediciones` · `DELETE /mediciones/:id` | todos / persona | Presión, glucosa, peso, ánimo, dolor |
-| `GET /alertas` · `POST /alertas/:id/visto` | todos | Dosis sin confirmar, citas, mediciones fuera de rango, existencias, convocatorias nuevas |
+| `GET /alertas` · `POST /alertas/:id/visto` | todos | Pedidos de ayuda (siempre primero), dosis sin confirmar, citas, mediciones fuera de rango, existencias, convocatorias nuevas |
+| `POST /ayuda` | persona | «Necesito ayuda»: avisa al círculo (ver abajo) |
+| `GET /resurtir` | todos | Para cuántos días alcanzan las medicinas (ver abajo) |
 | `POST /circulo/invitacion` · `POST /circulo/unirse` · `GET /circulo` · `DELETE /circulo/:id` | persona / pública | Círculo de cuidado |
 | `GET /circulo/resumen` | todos | Adherencia de la semana, próxima toma, citas y últimas mediciones |
 | `GET /convocatorias[?discapacidad=1]` · `POST /convocatorias/actualizar` | todos / persona | Convocatorias de la Secretaría de Desarrollo Humano y Bien Común |
 
+### `POST /ayuda` — «Necesito ayuda»
+Solo la persona. Cuerpo opcional `{ "mensaje": "texto de hasta 200 caracteres" }`.
+
+- **201** `{ "ayuda": { "id", "fecha": "YYYY-MM-DD", "hora": "HH:MM", "mensaje" }, "cuidadores": <número de cuidadores del círculo> }`
+- **200** con la misma ayuda si ya hubo una en el último minuto (un doble toque no la duplica).
+- Durante 24 h, `GET /alertas` y `GET /circulo/resumen` muestran, **antes que cualquier otra alerta**:
+  `{ "id": "ayuda:<id>", "tipo": "ayuda", "severidad": "alta", "titulo": "<Nombre> pidió ayuda", "detalle": "<mensaje>" | "Sin mensaje", "fecha": "<ISO -06:00>", "visto": false }`.
+  Se marca vista con `POST /alertas/ayuda:<id>/visto`, como las demás.
+- Por voz (`POST /voz`): «necesito ayuda», «auxilio», «emergencia», «ayúdenme» o «socorro» registran la ayuda (con la frase como
+  mensaje) y responden «Avisé a tus cuidadores. Si es una emergencia, llama al 911.» (sin cuidadores: «Todavía no tienes
+  cuidadores en tu círculo. Si es una emergencia, llama al 911.»). «Ayuda» sola sigue siendo la lista de órdenes.
+- Conversando con el modelo, la herramienta `pedir_ayuda` hace lo mismo cuando la persona describe una emergencia.
+
+### `GET /resurtir` — cuándo se acaban las medicinas
+Persona y cuidador. Recorre el calendario real (horarios, días de la semana, inicio y fin), sin contar lo ya tomado hoy.
+```json
+{ "medicamentos": [ { "id", "nombre", "dosis", "existencias": 8, "porDia": 3, "diasRestantes": 2, "seAcaba": "2026-11-20",
+                      "alcanzaHastaFin": false, "urgente": true } ] }
+```
+Solo medicinas activas con `existencias`; la que se acaba antes va primero. `seAcaba` es el día de la primera dosis que ya no
+alcanza (`diasRestantes` = días de hoy a esa fecha; 0 = hoy). Si alcanza hasta el `fin` del tratamiento, `seAcaba` y
+`diasRestantes` son `null` y `alcanzaHastaFin` es `true`. `urgente` = alcanza para 3 días o menos: entonces también aparece
+la alerta `existencias-bajas` («Quedan 8: alcanzan para 2 días.»), además de cuando quedan 3 dosis o menos.
+
 Los rangos de las mediciones son **avisos orientativos, no un diagnóstico**; la persona puede ajustarlos con lo que le
-indique su médico (`PATCH /perfil` → `rangos`).
+indique su médico (`PATCH /perfil` → `rangos`; solo tipos y límites conocidos, números de 0 a 1000).
+
+Otras reglas: las mediciones no pueden ser del futuro (5 min de margen por el reloj del teléfono); una toma se puede
+registrar de hasta 30 días atrás y 1 día adelante; pasada la medianoche, la dosis de las 23:50 (o una pospuesta que cruza
+las 00:00) sigue siendo la que se confirma con «ya la tomé».
 
 ## Privacidad
 No hay cuentas, analítica ni servicios externos salvo la lectura pública de la página de convocatorias. Los datos viven

@@ -16,19 +16,27 @@ const hogarVacio = () => ({
   tomas: [], // { medicamentoId, fecha, hora, estado, hasta?, registrado }
   citas: [],
   mediciones: [],
+  ayudas: [], // { id, fecha, hora, mensaje, ms } — «Necesito ayuda» (las 100 más recientes)
   vistos: {} // { [tokenId]: [alertaId] }
 });
+
+/** Completa un hogar guardado por una versión anterior con los campos que le falten (p. ej. `ayudas`). */
+const completarHogar = (h) => ({ ...hogarVacio(), ...h });
 
 // Versión 2: varios hogares independientes en un mismo servidor; las convocatorias (públicas) se comparten.
 const empty = () => ({ version: 2, hogares: {}, convocatorias: CONVOCATORIAS_VACIAS() });
 
 /** Convierte el archivo de la versión 1 (una sola persona en la raíz) a la versión 2, sin perder nada. */
 function migrar(viejo) {
-  if (viejo && viejo.version === 2) return { ...empty(), ...viejo };
+  if (viejo && viejo.version === 2) {
+    const hogares = {};
+    for (const [id, h] of Object.entries(viejo.hogares || {})) hogares[id] = completarHogar(h);
+    return { ...empty(), ...viejo, hogares };
+  }
   const nuevo = empty();
   if (viejo && viejo.perfil) {
     const { convocatorias, version, ...resto } = viejo;
-    nuevo.hogares[newId()] = { ...hogarVacio(), ...resto };
+    nuevo.hogares[newId()] = completarHogar(resto);
     if (convocatorias) nuevo.convocatorias = convocatorias;
   } else if (viejo && viejo.convocatorias) {
     nuevo.convocatorias = viejo.convocatorias;
