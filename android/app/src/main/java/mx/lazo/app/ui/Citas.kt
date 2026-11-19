@@ -46,6 +46,7 @@ fun PantallaCitas(ui: Ui, abrir: (Pantalla) -> Unit) {
 
 @Composable
 fun FormCita(vm: AppViewModel, ui: Ui, id: String?, volver: () -> Unit) {
+    val guardando = ui.guardando
     val existente = ui.citas.firstOrNull { it.id == id }
     var especialista by remember { mutableStateOf(existente?.especialista ?: "") }
     var motivo by remember { mutableStateOf(existente?.motivo ?: "") }
@@ -68,7 +69,7 @@ fun FormCita(vm: AppViewModel, ui: Ui, id: String?, volver: () -> Unit) {
         item { Campo("Cómo llegarás (opcional)", transporte, { transporte = it }, ayuda = "Por ejemplo: taxi adaptado, me lleva mi hija") }
         item { Campo("Notas (opcional)", notas, { notas = it }, unaLinea = false) }
         item {
-            BotonGrande("Guardar", {
+            BotonGrande(if (guardando) "Guardando…" else "Guardar", {
                 when {
                     especialista.isBlank() -> error = "Escribe con quién es la cita."
                     fecha == null -> error = "Elige la fecha."
@@ -79,7 +80,7 @@ fun FormCita(vm: AppViewModel, ui: Ui, id: String?, volver: () -> Unit) {
                         vm.guardarCita(existente?.id, body, volver)
                     }
                 }
-            }, tono = Tono.EXITO)
+            }, tono = Tono.EXITO, habilitado = !guardando)
         }
         item { BotonGrande("Cancelar", volver, tono = Tono.NEUTRO) }
         if (existente != null) item { BotonGrande("Eliminar esta cita", { confirmarBorrar = true }, tono = Tono.PELIGRO, icono = Icons.Filled.Delete) }

@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -85,6 +86,8 @@ private fun FilaMedicion(m: Medicion, borrar: () -> Unit) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FormMedicion(vm: AppViewModel, tipo: TipoMedicion, volver: () -> Unit) {
+    val estadoUi by vm.ui.collectAsStateWithLifecycle()
+    val guardando = estadoUi.guardando
     var a by remember { mutableStateOf("") }
     var b by remember { mutableStateOf("") }
     var c by remember { mutableStateOf("") }
@@ -117,8 +120,9 @@ fun FormMedicion(vm: AppViewModel, tipo: TipoMedicion, volver: () -> Unit) {
             }
         }
         item { Campo("Nota (opcional)", nota, { nota = it }, ayuda = "Por ejemplo: después de comer") }
-        item {
-            BotonGrande("Guardar", {
+        // Ya guardado con un aviso en pantalla: no se vuelve a mostrar «Guardar» (otro toque crearía otra medición)
+        if (resultado == null) item {
+            BotonGrande(if (guardando) "Guardando…" else "Guardar", {
                 val valor: JSONObject? = when (tipo) {
                     TipoMedicion.PRESION -> if (a.toIntOrNull() != null && b.toIntOrNull() != null) JSONObject().put("sistolica", a.toInt()).put("diastolica", b.toInt()).apply { c.toIntOrNull()?.let { put("pulso", it) } } else null
                     TipoMedicion.GLUCOSA -> a.toIntOrNull()?.let { JSONObject().put("mgdl", it) }
@@ -133,7 +137,7 @@ fun FormMedicion(vm: AppViewModel, tipo: TipoMedicion, volver: () -> Unit) {
                         else { resultado = "${aviso.texto}. Es un aviso orientativo, no un diagnóstico. Si no te sientes bien, consulta a tu médico."; vm.hablar(resultado!!) }
                     }
                 }
-            }, tono = Tono.EXITO)
+            }, tono = Tono.EXITO, habilitado = !guardando)
         }
         item { BotonGrande(if (resultado != null) "Listo" else "Cancelar", volver, tono = Tono.NEUTRO) }
     }

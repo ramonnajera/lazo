@@ -308,8 +308,10 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
     return { perfil };
   });
 
-  ruta('POST', /^\/medicamentos$/, 'persona', ({ h, body, res }) => {
+  ruta('POST', /^\/medicamentos$/, 'persona', ({ h, d, body, res }) => {
     const m = { id: newId(), ...validarMedicamento(body, null, ahora().date), creado: ahora().date };
+    const igual = d.medicamentos.find((x) => x.activo !== false && x.nombre.toLowerCase() === m.nombre.toLowerCase() && x.dosis === m.dosis && JSON.stringify(x.horarios) === JSON.stringify(m.horarios) && x.creado === m.creado);
+    if (igual) return { medicamento: igual, repetida: true }; // doble toque: la misma medicina, hoy, no se agrega dos veces
     mutar(h, (x) => x.medicamentos.push(m));
     res.status = 201;
     return { medicamento: m };
@@ -527,8 +529,10 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
     return { transcripcion: texto.slice(0, 300), ...(await responder(h, d, auth, texto.slice(0, 300))) };
   }, { crudo: true });
 
-  ruta('POST', /^\/citas$/, 'persona', ({ h, body, res }) => {
+  ruta('POST', /^\/citas$/, 'persona', ({ h, d, body, res }) => {
     const c = { id: newId(), ...validarCita(body, null) };
+    const igual = d.citas.find((x) => x.especialista.toLowerCase() === c.especialista.toLowerCase() && x.fecha === c.fecha && x.hora === c.hora);
+    if (igual) return { cita: igual, repetida: true }; // doble toque: la misma cita no se agrega dos veces
     mutar(h, (x) => x.citas.push(c));
     res.status = 201;
     return { cita: c };
@@ -560,6 +564,9 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
     const hora = body.hora === undefined ? n.time : body.hora;
     if (!T.validDate(fecha) || !T.validTime(hora)) throw bad('fecha (YYYY-MM-DD) u hora (HH:MM) inválida');
     const med = { id: newId(), tipo: body.tipo, valor: v.valor, nota: texto(body.nota, 'nota', { max: 200 }), fecha, hora };
+    // Un doble toque en «Guardar» manda lo mismo dos veces: la segunda (mismo dato, mismo momento) no crea otra medición.
+    const repetida = d.mediciones.find((x) => x.tipo === med.tipo && x.fecha === med.fecha && JSON.stringify(x.valor) === JSON.stringify(med.valor) && Math.abs(T.absMin(x.fecha, x.hora) - T.absMin(med.fecha, med.hora)) <= 2);
+    if (repetida) return { medicion: { ...repetida, texto: M.describir(repetida.tipo, repetida.valor) }, aviso: M.evaluar(repetida.tipo, repetida.valor, (d.perfil && d.perfil.rangos) || {}), repetida: true };
     mutar(h, (x) => x.mediciones.push(med));
     res.status = 201;
     return { medicion: { ...med, texto: M.describir(med.tipo, med.valor) }, aviso: M.evaluar(med.tipo, med.valor, (d.perfil && d.perfil.rangos) || {}) };

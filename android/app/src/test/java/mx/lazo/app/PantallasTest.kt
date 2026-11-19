@@ -245,6 +245,11 @@ class PantallasTest {
         rule.onNodeWithContentDescription("Hablar con Lazo").assertExists() // en las demás, el botón flotante
     }
 
+    @Test fun mientrasSeGuardaElBotonSeBloqueaParaQueUnDobleToqueNoDupliqueNada() {
+        mostrar { FormCita(vm, ui.copy(guardando = true), null) {} }
+        rule.onNodeWithText("Guardando…").assertIsNotEnabled()
+    }
+
     // ---------- capturas ----------
     @Test fun capturas() {
         val resumen = Resumen("Ana Ejemplo", Discapacidad.AMBAS, tomas[1], 83, listOf(DiaAdherencia("2026-11-16", 3, 3, 0, 0, 0), DiaAdherencia("2026-11-17", 3, 2, 1, 0, 0), DiaAdherencia("2026-11-18", 3, 1, 0, 1, 1)), citas, listOf(TipoMedicion.PRESION to "120/80", TipoMedicion.GLUCOSA to "260 mg/dL"),

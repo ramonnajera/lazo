@@ -30,7 +30,7 @@ data class Ui(
     val resumen: Resumen? = null, val convocatorias: ListaConvocatorias? = null, val cuidadores: List<Cuidador> = emptyList(), val codigo: String? = null, val codigoVinculo: String? = null, val dispositivos: List<Cuidador> = emptyList(),
     val cargando: Boolean = false, val mensaje: String? = null, val sinConexion: Boolean = false, val sinEnviar: Int = 0, val destino: String? = null,
     val escala: Float = 1.25f, val altoContraste: Boolean = false, val voz: Boolean = true, val velocidad: Float = 0.9f,
-    val chat: List<MensajeChat> = emptyList(), val chatOcupado: Boolean = false, val grabando: Boolean = false,
+    val chat: List<MensajeChat> = emptyList(), val chatOcupado: Boolean = false, val grabando: Boolean = false, val guardando: Boolean = false,
 ) {
     val conectado get() = rol != null
 }
@@ -307,9 +307,13 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun cancelarGrabacion() { if (_ui.value.grabando) { grabadora.cancelar(); _ui.update { it.copy(grabando = false) } } }
 
     // ---------- datos de la persona ----------
+    /** Una sola operación de guardado a la vez: un segundo toque mientras la primera viaja por internet se ignora (así no se duplica nada). */
     private fun accion(exito: String? = null, bloque: suspend () -> Unit) {
+        if (_ui.value.guardando) return
+        _ui.update { it.copy(guardando = true) }
         viewModelScope.launch {
             try { bloque(); if (exito != null) avisar(exito); refrescar() } catch (e: ApiException) { avisar(e.message ?: "No se pudo completar.") }
+            finally { _ui.update { it.copy(guardando = false) } }
         }
     }
 
@@ -318,12 +322,15 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun guardarCita(id: String?, body: JSONObject, alTerminar: () -> Unit) = accion("Cita guardada.") { api().guardarCita(id, body); alTerminar() }
     fun borrarCita(id: String, alTerminar: () -> Unit) = accion("Cita eliminada.") { api().borrarCita(id); alTerminar() }
     fun registrarMedicion(tipo: TipoMedicion, valor: JSONObject, nota: String, alTerminar: (Aviso?) -> Unit) {
+        if (_ui.value.guardando) return
+        _ui.update { it.copy(guardando = true) }
         viewModelScope.launch {
             try {
                 val r = api().registrarMedicion(tipo, valor, nota)
                 val aviso = r.optJSONObject("aviso")?.let { Aviso(it.optString("nivel"), it.optString("texto")) }
                 alTerminar(aviso); refrescar()
             } catch (e: ApiException) { avisar(e.message ?: "No se pudo guardar.") }
+            finally { _ui.update { it.copy(guardando = false) } }
         }
     }
     fun borrarMedicion(id: String) = accion("Medición eliminada.") { api().borrarMedicion(id) }

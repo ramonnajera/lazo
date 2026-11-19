@@ -770,3 +770,37 @@ test('conversación: si el modelo repite una escritura, no se duplica nada y no 
     assert.equal(r.body.accion.hecho, false);
   } finally { s.close(); }
 });
+
+// ---------------------------------------------------------------- doble toque en «Guardar»
+
+test('doble toque: la misma medición, cita o medicina enviada dos veces se guarda una sola vez', async () => {
+  const s = await conPersona();
+  try {
+    const m1 = await s.p('POST', '/mediciones', { tipo: 'glucosa', valor: { mgdl: 105 } });
+    const m2 = await s.p('POST', '/mediciones', { tipo: 'glucosa', valor: { mgdl: 105 } });
+    assert.equal(m1.status, 201);
+    assert.equal(m2.status, 200);
+    assert.equal(m2.body.repetida, true);
+    assert.equal(m2.body.medicion.id, m1.body.medicion.id);
+    assert.equal(s.hogar().mediciones.length, 1);
+    // otro valor, o el mismo valor tiempo después, sí es otra medición
+    await s.p('POST', '/mediciones', { tipo: 'glucosa', valor: { mgdl: 110 } });
+    s.clock.set('2026-11-18T14:10:00Z');
+    await s.p('POST', '/mediciones', { tipo: 'glucosa', valor: { mgdl: 105 } });
+    assert.equal(s.hogar().mediciones.length, 3);
+
+    const c = { especialista: 'Oftalmología', fecha: '2026-11-25', hora: '10:00' };
+    const c1 = await s.p('POST', '/citas', c);
+    const c2 = await s.p('POST', '/citas', { ...c, especialista: 'oftalmología' });
+    assert.equal(c1.status, 201); assert.equal(c2.body.repetida, true);
+    assert.equal(s.hogar().citas.length, 1);
+    await s.p('POST', '/citas', { ...c, hora: '11:00' }); // otra hora: otra cita
+    assert.equal(s.hogar().citas.length, 2);
+
+    const med = { nombre: 'Metformina', dosis: '850 mg', horarios: ['08:00'] };
+    await s.p('POST', '/medicamentos', med);
+    const m3 = await s.p('POST', '/medicamentos', med);
+    assert.equal(m3.body.repetida, true);
+    assert.equal(s.hogar().medicamentos.length, 1);
+  } finally { s.close(); }
+});

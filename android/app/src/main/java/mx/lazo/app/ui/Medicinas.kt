@@ -52,6 +52,7 @@ fun PantallaMedicinas(ui: Ui, abrir: (Pantalla) -> Unit) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FormMedicamento(vm: AppViewModel, ui: Ui, id: String?, volver: () -> Unit) {
+    val guardando = ui.guardando
     val existente = ui.medicamentos.firstOrNull { it.id == id }
     var nombre by remember { mutableStateOf(existente?.nombre ?: "") }
     var dosis by remember { mutableStateOf(existente?.dosis ?: "") }
@@ -90,7 +91,7 @@ fun FormMedicamento(vm: AppViewModel, ui: Ui, id: String?, volver: () -> Unit) {
         item { Campo("Dosis que tienes (opcional)", existencias, { existencias = it.filter(Char::isDigit).take(4) }, numerico = true, ayuda = "Lazo te avisa cuando queden pocas.") }
         item { Interruptor("Avisarme de esta medicina", activo) { activo = it } }
         item {
-            BotonGrande("Guardar", {
+            BotonGrande(if (guardando) "Guardando…" else "Guardar", {
                 when {
                     nombre.isBlank() -> error = "Escribe el nombre de la medicina."
                     horarios.isEmpty() -> error = "Agrega al menos una hora."
@@ -103,7 +104,7 @@ fun FormMedicamento(vm: AppViewModel, ui: Ui, id: String?, volver: () -> Unit) {
                         vm.guardarMedicamento(existente?.id, body, volver)
                     }
                 }
-            }, tono = Tono.EXITO)
+            }, tono = Tono.EXITO, habilitado = !guardando)
         }
         item { BotonGrande("Cancelar", volver, tono = Tono.NEUTRO) }
         if (existente != null) item { BotonGrande("Eliminar esta medicina", { confirmarBorrar = true }, tono = Tono.PELIGRO, icono = Icons.Filled.Delete) }
