@@ -9,10 +9,10 @@ const { createApp } = require('../src/app');
 const FIXTURE = fs.readFileSync(path.join(__dirname, 'fixtures', 'convocatorias.html'), 'utf8');
 
 /** Servidor de prueba con reloj que se puede mover. `clock.set('2026-11-18T14:00:00Z')` (UTC; local = UTC-6). */
-async function arrancar({ dataFile = null, html = FIXTURE, maxHogares, transcribir } = {}) {
+async function arrancar({ dataFile = null, html = FIXTURE, maxHogares, transcribir, llm = null } = {}) {
   const clock = { t: new Date('2026-11-18T14:00:00Z') }; // 08:00 en Chihuahua
   clock.set = (iso) => { clock.t = new Date(iso); };
-  const app = createApp({ dataFile, now: () => new Date(clock.t), fetchHtml: async () => html, convUrl: 'https://ejemplo.test/convocatorias', ...(maxHogares ? { maxHogares } : {}), ...(transcribir ? { transcribir } : {}) });
+  const app = createApp({ dataFile, now: () => new Date(clock.t), fetchHtml: async () => html, convUrl: 'https://ejemplo.test/convocatorias', ...(maxHogares ? { maxHogares } : {}), ...(transcribir ? { transcribir } : {}), llm });
   const srv = http.createServer(app.handler);
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`;
@@ -634,5 +634,139 @@ test('audio: límite de 12 audios por minuto por dispositivo', async () => {
     assert.equal((await s.audio()).status, 429);
     s.clock.set('2026-11-18T14:01:30Z');
     assert.equal((await s.audio()).status, 200);
+  } finally { s.close(); }
+});
+
+// ---------------------------------------------------------------- conversación con el modelo (simulado)
+
+const texto = (t) => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: t }] });
+const usa = (nombre, input, id = 'tu1') => ({ stop_reason: 'tool_use', content: [{ type: 'tool_use', id, name: nombre, input }] });
+
+/** Un «modelo» guionizado: devuelve las respuestas en orden y guarda lo que recibió. */
+function modeloFalso(...respuestas) {
+  const recibidos = [];
+  const llm = async (payload) => {
+    recibidos.push(JSON.parse(JSON.stringify(payload)));
+    const r = respuestas.shift();
+    if (r instanceof Error) throw r;
+    return r;
+  };
+  llm.recibidos = recibidos;
+  return llm;
+}
+
+test('conversación: el modelo usa una herramienta, se registra la toma y la respuesta llega limpia', async () => {
+  const llm = modeloFalso(usa('registrar_toma', { medicina: 'metformina', estado: 'tomada' }), texto('Listo, **anoté** tu Metformina como tomada.'));
+  const s = await conPersona({ llm });
+  try {
+    await s.p('POST', '/medicamentos', { nombre: 'Metformina', dosis: '850 mg', horarios: ['08:00'] });
+    const r = await s.p('POST', '/voz', { texto: 'oye, acabo de desayunar y ya me tomé la pastilla del azúcar' });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.reply, 'Listo, anoté tu Metformina como tomada.'); // sin asteriscos: se lee en voz alta
+    assert.deepEqual(r.body.accion, { tipo: 'conversacion', hecho: true });
+    assert.equal(s.hogar().tomas[0].estado, 'tomada');
+    const primera = llm.recibidos[0];
+    assert.match(primera.system, /Ana Ejemplo/);
+    assert.match(primera.system, /miércoles 2026-11-18/);
+    assert.match(primera.system, /No diagnosticas/);
+    assert.ok(primera.tools.some((t) => t.name === 'crear_cita'));
+    const resultado = llm.recibidos[1].messages.at(-1).content[0];
+    assert.equal(resultado.type, 'tool_result');
+    assert.match(resultado.content, /Metformina/);
+  } finally { s.close(); }
+});
+
+test('conversación: crear cita y medición desde lenguaje natural, con validación del servidor', async () => {
+  const llm = modeloFalso(
+    usa('crear_cita', { especialista: 'Oftalmología', fecha: '2026-11-20', hora: '09:30', lugar: 'Hospital General' }), texto('Agendé tu cita de Oftalmología el viernes 20 a las 9:30.'),
+    usa('registrar_medicion', { tipo: 'glucosa', mgdl: 260 }), texto('Anoté 260. Está alta: avísale a tu cuidador o a tu médico.'),
+    usa('registrar_medicion', { tipo: 'glucosa', mgdl: 5000 }), texto('Ese número no me parece correcto. ¿Me lo repites?')
+  );
+  const s = await conPersona({ llm });
+  try {
+    await s.p('POST', '/voz', { texto: 'ponme cita con el oculista este viernes a las nueve y media en el hospital general' });
+    assert.equal(s.hogar().citas[0].fecha, '2026-11-20');
+    const m = await s.p('POST', '/voz', { texto: 'mi azúcar salió en doscientos sesenta' });
+    assert.equal(s.hogar().mediciones[0].valor.mgdl, 260);
+    assert.equal(m.body.accion.hecho, true);
+    const malo = await s.p('POST', '/voz', { texto: 'mi azúcar salió en cinco mil' });
+    assert.equal(s.hogar().mediciones.length, 1); // el valor imposible no se guardó
+    assert.match(llm.recibidos.at(-1).messages.at(-1).content[0].content, /mgdl debe estar entre/); // y el modelo recibió el motivo
+    assert.equal(malo.body.accion.hecho, false);
+  } finally { s.close(); }
+});
+
+test('conversación: recuerda lo último que se dijo y olvida tras media hora', async () => {
+  const llm = modeloFalso(texto('Tienes una cita con Oftalmología mañana.'), texto('A las 9:30 de la mañana.'), texto('Hola de nuevo.'));
+  const s = await conPersona({ llm });
+  try {
+    await s.p('POST', '/voz', { texto: 'cuéntame sobre mi cita del oculista por favor' });
+    await s.p('POST', '/voz', { texto: 'y a qué hora era la consulta aquella otra vez' });
+    const segunda = llm.recibidos[1].messages;
+    assert.deepEqual(segunda.map((m) => m.role), ['user', 'assistant', 'user']);
+    assert.match(segunda[1].content, /Oftalmología/);
+    s.clock.set('2026-11-18T15:00:00Z'); // pasa más de media hora
+    await s.p('POST', '/voz', { texto: 'hola buenos días cómo amaneciste hoy' });
+    assert.equal(llm.recibidos[2].messages.length, 1);
+  } finally { s.close(); }
+});
+
+test('conversación: frases cortas conocidas no gastan modelo y responden al instante', async () => {
+  const llm = modeloFalso();
+  const s = await conPersona({ llm });
+  try {
+    await s.p('POST', '/medicamentos', { nombre: 'Metformina', horarios: ['08:00'] });
+    const r = await s.p('POST', '/voz', { texto: 'qué tengo hoy' });
+    assert.match(r.body.reply, /Hoy tienes 1 toma/);
+    assert.equal(llm.recibidos.length, 0);
+  } finally { s.close(); }
+});
+
+test('conversación: si el modelo falla o no hay clave, responde el intérprete de siempre', async () => {
+  const s = await conPersona({ llm: modeloFalso(new Error('anthropic 529: overloaded')) });
+  try {
+    const r = await s.p('POST', '/voz', { texto: 'cuéntame un chiste muy largo por favor' });
+    assert.equal(r.status, 200);
+    assert.match(r.body.reply, /No te entendí/);
+  } finally { s.close(); }
+});
+
+test('conversación: tope de 80 conversaciones al día por dispositivo (después, el intérprete)', async () => {
+  const llm = async () => texto('Claro.');
+  const s = await conPersona({ llm });
+  try {
+    for (let i = 0; i < 80; i++) assert.equal((await s.p('POST', '/voz', { texto: `cuéntame algo número ${i} por favor` })).body.reply, 'Claro.');
+    assert.match((await s.p('POST', '/voz', { texto: 'cuéntame algo más por favor ahora' })).body.reply, /No te entendí/);
+  } finally { s.close(); }
+});
+
+test('conversación: las herramientas solo ven el hogar de quien habla', async () => {
+  const llm = modeloFalso(usa('consultar_citas', {}), texto('No tienes citas.'));
+  const s = await dosHogares();
+  s.app = s.app; // (el servidor de dosHogares no lleva modelo: se prueba la función de herramientas por la vía de dos servidores)
+  s.close();
+  const t = await arrancar({ llm });
+  try {
+    const a = (await t.call('POST', '/perfil', { body: { nombre: 'Ana Ejemplo' } })).body.token;
+    const b = (await t.call('POST', '/perfil', { body: { nombre: 'Beto Ejemplo' } })).body.token;
+    await t.call('POST', '/citas', { token: a, body: { especialista: 'Solo de Ana', fecha: '2026-11-25', hora: '10:00' } });
+    await t.call('POST', '/voz', { token: b, body: { texto: 'cuáles son mis próximas citas médicas por favor' } });
+    const visto = llm.recibidos[1].messages.at(-1).content[0].content;
+    assert.doesNotMatch(visto, /Solo de Ana/);
+    assert.match(llm.recibidos[0].system, /Beto Ejemplo/);
+  } finally { t.close(); }
+});
+
+test('conversación: si el modelo repite una escritura, no se duplica nada y no cuenta como cambio', async () => {
+  const llm = modeloFalso(
+    usa('crear_cita', { especialista: 'Oftalmología', fecha: '2026-11-20', hora: '09:30' }), texto('Agendada.'),
+    usa('crear_cita', { especialista: 'oftalmologia', fecha: '2026-11-20', hora: '09:30' }, 'tu2'), texto('Ya la tenías.')
+  );
+  const s = await conPersona({ llm });
+  try {
+    assert.equal((await s.p('POST', '/voz', { texto: 'agenda mi cita con el oculista el viernes' })).body.accion.hecho, true);
+    const r = await s.p('POST', '/voz', { texto: 'confírmame que quedó la cita del oculista' });
+    assert.equal(s.hogar().citas.length, 1);
+    assert.equal(r.body.accion.hecho, false);
   } finally { s.close(); }
 });

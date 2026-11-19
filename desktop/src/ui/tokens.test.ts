@@ -55,13 +55,24 @@ describe("tokens.css primary buttons", () => {
 });
 
 describe("tokens.css estilo de la app (2026-10-28)", () => {
-  it("island_background_is_pure_black", () => {
-    expect(css).toMatch(/--bg:\s*#000;/);
+  it("island_uses_the_lazo_app_palette", () => {
+    // Los mismos colores que la app de Android (Tema.kt): azul #0B3D91, verde #065F2C, café #6B3A00, rojo #8F1313, azul noche #0B1220.
+    expect(css).toMatch(/--bg:\s*#0B1220;/);
+    expect(css).toMatch(/--lazo-azul:\s*#0B3D91;/);
+    expect(css).toMatch(/--lazo-verde:\s*#065F2C;/);
+    expect(css).toMatch(/--lazo-cafe:\s*#6B3A00;/);
+    expect(css).toMatch(/--lazo-rojo:\s*#8F1313;/);
   });
 
-  it("count_pill_is_white_with_black_text", () => {
-    expect(css).toMatch(/--count-bg:\s*#fff;/);
-    expect(css).toMatch(/--count-fg:\s*#000;/);
+  it("count_pill_is_lazo_blue_with_white_text", () => {
+    expect(css).toMatch(/--count-bg:\s*var\(--lazo-azul\);/);
+    expect(css).toMatch(/--count-fg:\s*#fff;/);
+  });
+
+  it("status_chips_keep_white_text_on_the_app_colors", () => {
+    for (const [cls, color] of [["tomada", "verde"], ["atrasada", "rojo"], ["pospuesta", "cafe"], ["ahora", "azul"]]) {
+      expect(css).toMatch(new RegExp(`\\.st-${cls}\\s*\\{[^}]*background:\\s*var\\(--lazo-${color}\\);\\s*color:\\s*#fff`));
+    }
   });
 
   it("font_is_inter_with_segoe_fallback", () => {

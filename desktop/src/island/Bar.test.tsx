@@ -66,3 +66,13 @@ describe("Bar", () => {
     expect(bar.getAttribute("aria-hidden")).toBe("true");
   });
 });
+
+describe("marca de Lazo en la barra", () => {
+  it("muestra_el_icono_de_lazo_antes_del_reloj", () => {
+    const { container } = render(<Bar tomas={[]} active={null} onSection={() => {}} />);
+    const logo = container.querySelector("svg.bar-logo");
+    expect(logo).toBeTruthy();
+    expect(logo!.getAttribute("aria-label")).toBe("Lazo");
+    expect(container.querySelector(".bar")!.firstElementChild).toBe(logo);
+  });
+});

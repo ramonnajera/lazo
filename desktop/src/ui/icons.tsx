@@ -133,3 +133,16 @@ export const IconPulse = (p: P) => (
     <path d="M3 12.5h4l2.2-6 4.2 12 2.4-6H21" />
   </Svg>
 );
+
+/** Marca de Lazo: el lazo blanco sobre el azul de la app (mismo dibujo que el ícono de Android y de Windows). */
+export function LazoMark(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 108 108" role="img" aria-label="Lazo" {...props}>
+      <rect width="108" height="108" rx="25" fill="#0B3D91" />
+      <g transform="translate(54 54) scale(1.22) translate(-54 -54)" fill="none" stroke="#FFFFFF" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M54,60 C40,46 32,36 38,28 C44,20 56,26 54,40 C52,26 64,20 70,28 C76,36 68,46 54,60 Z" />
+        <path d="M54,60 L42,86 M54,60 L66,86" />
+      </g>
+    </svg>
+  );
+}

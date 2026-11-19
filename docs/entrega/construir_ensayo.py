@@ -10,7 +10,7 @@ from docx.oxml.ns import qn
 from docx.shared import Pt, Cm, RGBColor
 
 # Cifras de las pruebas automáticas del prototipo (se actualizan al cerrar la entrega)
-PRUEBAS = {"servidor": 72, "android": 49, "escritorio_web": 139, "escritorio_rust": 84}
+PRUEBAS = {"servidor": 80, "android": 49, "escritorio_web": 141, "escritorio_rust": 84}
 TOTAL_PRUEBAS = sum(PRUEBAS.values())
 
 doc = Document()
@@ -123,7 +123,7 @@ vineta("La Organización Mundial de la Salud ha señalado que, en los países de
 vineta("Observación propia al revisar el portal de convocatorias de la Secretaría de Desarrollo Humano y Bien Común el 18 de noviembre de 2026: 18 convocatorias vigentes, de las cuales 3 son para personas con discapacidad y 6 se publican únicamente como imagen; la lista no indica fechas límite ni estado.")
 
 titulo("Acciones y metodología")
-parrafo("**Actividades realizadas.** Se construyó un prototipo funcional con tres piezas que trabajan juntas: (1) un servidor propio, sin dependencias externas y sin cuentas y sin servicios de pago (la única llamada a un tercero es la transcripción de los audios que la persona decide enviar desde el teléfono, que no se guardan), que guarda los datos y calcula los avisos; (2) una aplicación para Android con alarmas locales, lectura en voz alta y órdenes por voz; y (3) un asistente para Windows 11, una barra superior con dictado y órdenes por voz locales, avisos de dosis y la sección de convocatorias. El conjunto cuenta con " + str(TOTAL_PRUEBAS) + " pruebas automáticas que pasan (" + str(PRUEBAS["servidor"]) + " del servidor, " + str(PRUEBAS["android"]) + " de Android y " + str(PRUEBAS["escritorio_web"] + PRUEBAS["escritorio_rust"]) + " del asistente de escritorio), entre ellas pruebas de pantalla con el lector de pantalla y con letra al doble de tamaño.")
+parrafo("**Actividades realizadas.** Se construyó un prototipo funcional con tres piezas que trabajan juntas: (1) un servidor propio, sin dependencias externas y sin cuentas y sin servicios de pago (los únicos terceros son la transcripción de los audios y el modelo de lenguaje que conversa con la persona, y solo cuando ella habla o escribe una frase libre), que guarda los datos y calcula los avisos; (2) una aplicación para Android con alarmas locales, lectura en voz alta y órdenes por voz; y (3) un asistente para Windows 11, una barra superior con dictado y órdenes por voz locales, avisos de dosis y la sección de convocatorias. El conjunto cuenta con " + str(TOTAL_PRUEBAS) + " pruebas automáticas que pasan (" + str(PRUEBAS["servidor"]) + " del servidor, " + str(PRUEBAS["android"]) + " de Android y " + str(PRUEBAS["escritorio_web"] + PRUEBAS["escritorio_rust"]) + " del asistente de escritorio), entre ellas pruebas de pantalla con el lector de pantalla y con letra al doble de tamaño.")
 parrafo("**Metodología.** Diseño centrado en la accesibilidad desde el primer día, no como un añadido: contraste de al menos 7:1, objetivos táctiles de 64 dp o más, descripciones para TalkBack en cada elemento, estados que nunca se comunican solo con color (siempre llevan texto y un signo), y una navegación que se convierte en un menú de botones grandes cuando la letra se amplía. Las decisiones se verifican con pruebas automáticas y con capturas revisadas a distintos tamaños de letra. Los avisos de valores fuera de rango son orientativos y nunca un diagnóstico.")
 parrafo("**Cronograma (opcional).**")
 vineta("**Fase 1 (realizada):** prototipo funcional de servidor, Android y Windows, con datos ficticios.")

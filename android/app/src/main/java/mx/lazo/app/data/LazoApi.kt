@@ -40,7 +40,7 @@ class LazoApi(base: String, private val token: String? = null) {
         send("POST", "/perfil/vincular/unirse", JSONObject().put("codigo", codigo.trim()).put("nombre", nombre))
 
     /** Orden escrita: «¿qué sigue?», «ya la tomé»… Responde {reply, accion}. */
-    suspend fun vozTexto(texto: String) = send("POST", "/voz", JSONObject().put("texto", texto))
+    suspend fun vozTexto(texto: String) = send("POST", "/voz", JSONObject().put("texto", texto), timeoutMs = 45_000)
 
     /** Orden hablada: el servidor transcribe el audio y responde {transcripcion, reply, accion}. */
     suspend fun vozAudio(audio: ByteArray, mime: String = "audio/mp4") = send("POST", "/voz/audio", crudo = audio, tipo = mime, timeoutMs = 45_000)

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type 
 import type { Toma } from "../api/types";
 import { hora12 } from "../panels/format";
 import { requiereAtencion, siguienteToma } from "../panels/Hoy";
-import { IconCalendar, IconChat, IconGear, IconList, IconPulse, IconTodo } from "../ui/icons";
+import { IconCalendar, IconChat, IconGear, IconList, IconPulse, IconTodo, LazoMark } from "../ui/icons";
 import { ISLAND_W, type Section } from "./model";
 
 const BUTTONS: { section: Section; label: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
@@ -79,6 +79,7 @@ export default function Bar({ tomas, active, onSection, onSettings, hidden = fal
 
   return (
     <div ref={ref} className="bar" style={hidden ? { visibility: "hidden" } : undefined} aria-hidden={hidden || undefined}>
+      <LazoMark className="bar-logo" />
       <span className="bar-clock">{to12h(time)}</span>
       <span className="bar-sep" />
       {BUTTONS.map(({ section, label, Icon }) => (

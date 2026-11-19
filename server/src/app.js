@@ -11,6 +11,7 @@ const C = require('./convocatorias');
 const X = require('./textos');
 const { interpretar, AYUDA_VOZ } = require('./comandos');
 const Tr = require('./transcribir');
+const Conv = require('./conversacion');
 
 const VERSION = '1.0.0';
 const MAX_BODY = 64 * 1024;
@@ -119,7 +120,7 @@ function validarCita(b, previo) {
 
 // ---------- aplicación ----------
 
-function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.descargar, convUrl = C.PAGE_URL, maxHogares = 200, transcribir = null } = {}) {
+function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.descargar, convUrl = C.PAGE_URL, maxHogares = 200, transcribir = null, llm = undefined } = {}) {
   const store = new Store(dataFile);
   const ahora = () => T.local(now());
   let ultimaActualizacionConv = 0;
@@ -129,6 +130,9 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
 
   const rutas = [];
   const ruta = (method, re, acceso, fn, opciones = {}) => rutas.push({ method, re, acceso, fn, ...opciones });
+  const memoriaChat = Conv.memoria(() => now().getTime());
+  const chatsPorDia = new Map(); // id de token → { fecha, n } (tope diario para cuidar el gasto del modelo)
+  const MAX_CHATS_POR_DIA = 80;
   const audiosPorToken = new Map(); // id de token → marcas de tiempo (límite de audios por minuto)
 
   const hogares = () => Object.values(store.data.hogares);
@@ -408,11 +412,98 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
     }
   }
 
-  ruta('POST', /^\/voz$/, 'persona', ({ h, d, body }) => {
+  /** Las herramientas del modelo, atadas a un solo hogar: no hay forma de que vea o toque datos de otra persona. */
+  function herramientas(h, d) {
+    const n = ahora();
+    const tol = (d.perfil && d.perfil.tolerancia) || S.TOLERANCIA_MIN;
+    const norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/\p{Mn}+/gu, '');
+    return {
+      consultar_hoy: async () => {
+        const vista = S.dayView(d, n.date, n, tol);
+        const prox = S.nextDose(d, n, tol);
+        return { fecha: n.date, tomas: vista.map((x) => ({ medicina: x.nombre, dosis: x.dosis, hora: x.hora, estado: x.estado })), siguiente: prox ? { medicina: prox.nombre, dosis: prox.dosis, fecha: prox.fecha, hora: prox.hora } : null };
+      },
+      consultar_medicinas: async () => ({ medicinas: d.medicamentos.filter((m) => m.activo !== false).map((m) => ({ nombre: m.nombre, dosis: m.dosis, horarios: m.horarios, instrucciones: m.instrucciones, quedan: m.existencias ?? null })) }),
+      consultar_citas: async () => ({ citas: R.proximasCitas(d, n).map((c) => ({ especialista: c.especialista, fecha: c.fecha, hora: c.hora, lugar: c.lugar, motivo: c.motivo })) }),
+      consultar_mediciones: async ({ tipo, dias }) => {
+        if (tipo && !M.TIPOS.includes(tipo)) throw bad('tipo no válido');
+        const desde = T.addDays(n.date, -Math.min(365, Math.max(1, Number(dias) || 14)));
+        return { mediciones: d.mediciones.filter((m) => m.fecha >= desde && (!tipo || m.tipo === tipo)).sort((a, b) => T.absMin(b.fecha, b.hora) - T.absMin(a.fecha, a.hora)).slice(0, 12).map((m) => ({ tipo: m.tipo, valor: M.describir(m.tipo, m.valor), fecha: m.fecha, hora: m.hora, aviso: (M.evaluar(m.tipo, m.valor, (d.perfil && d.perfil.rangos) || {}) || {}).texto || null })) };
+      },
+      consultar_convocatorias: async ({ solo_discapacidad }) => ({ convocatorias: d.convocatorias.items.filter((i) => !solo_discapacidad || i.discapacidad).slice(0, 20).map((i) => ({ nombre: i.nombre, dependencia: i.dependencia, para_discapacidad: !!i.discapacidad })), ultima_lectura: d.convocatorias.ultimaLectura }),
+      registrar_toma: async ({ medicina, estado, minutos }) => {
+        if (!['tomada', 'omitida', 'pospuesta'].includes(estado)) throw bad('estado no válido');
+        const hoy = S.dayView(d, n.date, n, tol);
+        let candidatas = hoy.filter((x) => X.requiereAtencion(x.estado) || x.estado === 'pendiente' || x.estado === 'pospuesta');
+        if (medicina) candidatas = candidatas.filter((x) => norm(x.nombre).includes(norm(medicina)));
+        const dosis = candidatas.find((x) => X.requiereAtencion(x.estado)) || candidatas[0];
+        if (!dosis) throw bad(medicina ? `no hay una toma pendiente de ${medicina}` : 'no hay ninguna toma pendiente');
+        aplicarToma(h, d, { medicamentoId: dosis.medicamentoId, fecha: dosis.fecha, hora: dosis.hora, estado, ...(minutos ? { minutos } : {}) });
+        return { ok: true, medicina: dosis.nombre, hora: dosis.hora, estado };
+      },
+      crear_cita: async (entrada) => {
+        const c = { id: newId(), ...validarCita({ especialista: entrada.especialista, fecha: entrada.fecha, hora: entrada.hora, lugar: entrada.lugar, motivo: entrada.motivo }, null) };
+        const igual = d.citas.find((x) => norm(x.especialista) === norm(c.especialista) && x.fecha === c.fecha && x.hora === c.hora);
+        if (igual) return { ok: true, ya_existia: true, cita: { especialista: igual.especialista, fecha: igual.fecha, hora: igual.hora } };
+        mutar(h, (x) => x.citas.push(c));
+        return { ok: true, cita: { especialista: c.especialista, fecha: c.fecha, hora: c.hora } };
+      },
+      registrar_medicion: async (e) => {
+        const valor = { presion: { sistolica: e.sistolica, diastolica: e.diastolica, ...(e.pulso !== undefined ? { pulso: e.pulso } : {}) }, glucosa: { mgdl: e.mgdl }, peso: { kg: e.kg }, animo: { nivel: e.nivel }, dolor: { nivel: e.nivel } }[e.tipo];
+        const v = M.validar(e.tipo, valor);
+        if (!v.ok) throw bad(v.error);
+        const med = { id: newId(), tipo: e.tipo, valor: v.valor, nota: texto(e.nota, 'nota', { max: 200 }), fecha: n.date, hora: n.time };
+        const repetida = d.mediciones.find((x) => x.tipo === med.tipo && x.fecha === med.fecha && JSON.stringify(x.valor) === JSON.stringify(med.valor) && Math.abs(T.absMin(x.fecha, x.hora) - T.absMin(med.fecha, med.hora)) <= 10);
+        if (repetida) return { ok: true, ya_existia: true, registrado: M.describir(med.tipo, med.valor) };
+        mutar(h, (x) => x.mediciones.push(med));
+        const aviso = M.evaluar(med.tipo, med.valor, (d.perfil && d.perfil.rangos) || {});
+        return { ok: true, registrado: M.describir(med.tipo, med.valor), aviso: aviso ? aviso.texto : null };
+      },
+      agregar_medicina: async (e) => {
+        const m = { id: newId(), ...validarMedicamento({ nombre: e.nombre, dosis: e.dosis, horarios: e.horarios, instrucciones: e.instrucciones }, null, n.date), creado: n.date };
+        if (d.medicamentos.some((x) => x.activo !== false && norm(x.nombre) === norm(m.nombre))) return { ok: true, ya_existia: true, medicina: m.nombre };
+        mutar(h, (x) => x.medicamentos.push(m));
+        return { ok: true, medicina: m.nombre, horarios: m.horarios };
+      }
+    };
+  }
+
+  /** Conversa con el modelo; si no hay modelo, se acabó el cupo del día o falla, usa el intérprete de frases. */
+  async function responder(h, d, auth, textoOrden) {
+    const t = now().getTime();
+    const llmFn = llm === undefined ? (process.env.ANTHROPIC_API_KEY ? Conv.anthropic(process.env.ANTHROPIC_API_KEY) : null) : llm;
+    const palabras = textoOrden.split(/\s+/).filter(Boolean).length;
+    const simple = interpretar(textoOrden).tipo !== 'desconocido' && palabras <= 5; // «qué sigue», «ya la tomé»: sin modelo, al instante
+    const respaldo = () => {
+      const r = ejecutarOrden(h, d, textoOrden);
+      memoriaChat.guardar(auth.id, textoOrden, r.reply);
+      return r;
+    };
+    if (!llmFn || simple) return respaldo();
+    const hoy = ahora().date;
+    const dia = chatsPorDia.get(auth.id);
+    const usados = dia && dia.fecha === hoy ? dia.n : 0;
+    if (usados >= MAX_CHATS_POR_DIA) return respaldo();
+    chatsPorDia.set(auth.id, { fecha: hoy, n: usados + 1 });
+    try {
+      const n = ahora();
+      const { reply, cambios } = await Conv.conversar({
+        llm: llmFn, texto: textoOrden, historial: memoriaChat.leer(auth.id), herramientas: herramientas(h, d),
+        contexto: { nombre: d.perfil && d.perfil.nombre, discapacidad: d.perfil && d.perfil.discapacidad, fecha: n.date, hora: n.time }
+      });
+      memoriaChat.guardar(auth.id, textoOrden, reply);
+      return { reply, accion: { tipo: 'conversacion', hecho: cambios } };
+    } catch (e) {
+      console.error('[lazo] conversación:', e.message);
+      return respaldo();
+    }
+  }
+
+  ruta('POST', /^\/voz$/, 'persona', ({ h, d, auth, body }) => {
     const texto = typeof body.texto === 'string' ? body.texto.trim() : '';
     if (!texto) throw bad('texto es obligatorio');
     if (texto.length > 300) throw bad('texto admite hasta 300 caracteres');
-    return ejecutarOrden(h, d, texto);
+    return responder(h, d, auth, texto);
   });
 
   // Audio (m4a, ogg, wav…) → texto con Whisper → la misma orden que /voz. El audio no se guarda.
@@ -433,7 +524,7 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
       throw new HttpError(502, 'No pude entender el audio. Intenta de nuevo o escribe tu orden.');
     }
     if (!texto) return { transcripcion: '', reply: 'No te escuché. Acércate al micrófono e intenta de nuevo.', accion: { tipo: 'desconocido', hecho: false } };
-    return { transcripcion: texto.slice(0, 300), ...ejecutarOrden(h, d, texto.slice(0, 300)) };
+    return { transcripcion: texto.slice(0, 300), ...(await responder(h, d, auth, texto.slice(0, 300))) };
   }, { crudo: true });
 
   ruta('POST', /^\/citas$/, 'persona', ({ h, body, res }) => {

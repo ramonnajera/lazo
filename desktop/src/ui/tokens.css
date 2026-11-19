@@ -6,8 +6,15 @@
   --radius-bar: 16px;
   --radius-open: 20px;
 
-  --bg: #000;
-  --edge: rgba(255, 255, 255, 0.06);
+  /* Colores de Lazo (los mismos de la app de Android): azul #0B3D91, verde #065F2C, café #6B3A00, rojo #8F1313 y el azul noche #0B1220 del texto. */
+  --lazo-azul: #0B3D91;
+  --lazo-azul-claro: #8FB4FF;
+  --lazo-verde: #065F2C;
+  --lazo-cafe: #6B3A00;
+  --lazo-rojo: #8F1313;
+
+  --bg: #0B1220;
+  --edge: rgba(255, 255, 255, 0.08);
   --shadow: 0 10px 40px rgba(0, 0, 0, 0.55);
   --sep: rgba(255, 255, 255, 0.12);
   --hover: rgba(255, 255, 255, 0.12);
@@ -17,25 +24,25 @@
   --text-3: #8b8b93;
   --icon: #c9c9cf;
 
-  --count-bg: #fff;
-  --count-fg: #000;
+  --count-bg: var(--lazo-azul);
+  --count-fg: #fff;
   --music: #30d158;
-  --blue: #0a84ff;
+  --blue: var(--lazo-azul);
   --pri-urgent: #ff453a;
   --pri-high: #ff9f0a;
   --pri-normal: #636366;
   --surface-1: rgba(255, 255, 255, 0.05);
   --surface-2: rgba(255, 255, 255, 0.06);
   --seg-fg: #a4a4ac;
-  --seg-on-bg: #fff;
-  --seg-on-fg: #111;
+  --seg-on-bg: var(--lazo-azul);
+  --seg-on-fg: #fff;
   --chk-border: #6b6b73;
   --av-bg: #3a3a40;
   --av-fg: #ddd;
-  --rec: #8e5cf0;
+  --rec: var(--lazo-rojo);
   --live: #ff453a;
-  --bubble-lazo: #1f1f23;
-  --field-bg: #1a1a1e;
+  --bubble-lazo: #17233A;
+  --field-bg: #131C2E;
   --field-fg: #e8e8ec;
   --field-ph: #77777f;
   --avail: calc(360px - var(--bar-h));
@@ -82,7 +89,9 @@ html.island *, html.island *::before, html.island *::after {
 .bar { display: flex; align-items: center; gap: 8px; height: var(--bar-h); padding: 0 12px; white-space: nowrap; }
 .bar-time { font: inherit; font-weight: 600; letter-spacing: 0.2px; color: inherit; background: transparent; border: 0; padding: 3px 4px; margin: 0 -4px; border-radius: var(--chip-radius); cursor: pointer; }
 .bar-clock { font-weight: 600; letter-spacing: 0.2px; }
-.count.urgent { background: var(--gc-11); color: #000; }
+.bar-logo { width: 20px; height: 20px; flex: none; border-radius: 6px; }
+.count { box-shadow: inset 0 0 0 1px var(--lazo-azul-claro); }
+.count.urgent { background: var(--lazo-rojo); color: #fff; box-shadow: inset 0 0 0 1px #ff8a8a; }
 .bar-sep { width: 1px; height: 16px; background: var(--sep); flex: none; }
 .bar-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--music); box-shadow: 0 0 6px var(--music); flex: none; padding: 0; border: 0; cursor: pointer; }
 .bar-dot.paused { background: var(--text-3); box-shadow: none; }
@@ -92,7 +101,7 @@ html.island *, html.island *::before, html.island *::after {
   color: var(--icon); cursor: pointer;
 }
 .icon-btn:hover { background: var(--edge); }
-.icon-btn[aria-pressed="true"] { background: var(--hover); color: #fff; }
+.icon-btn[aria-pressed="true"] { background: var(--lazo-azul); color: #fff; }
 .icon-btn svg { width: var(--icon-size); height: var(--icon-size); }
 .count { background: var(--count-bg); color: var(--count-fg); border-radius: var(--chip-radius); padding: 3px 7px; font-weight: 700; font-size: var(--chip-size); flex: none; border: 0; font-family: inherit; cursor: pointer; }
 .bar-tail { display: flex; align-items: center; gap: 8px; margin-left: auto; min-width: 0; }
@@ -120,7 +129,7 @@ html.island *, html.island *::before, html.island *::after {
 .pf-title { font-weight: 650; font-size: var(--font-size); }
 .seg { display: flex; gap: 4px; }
 .seg button { font: inherit; font-size: var(--chip-size); padding: 2px 8px; border: 0; border-radius: var(--chip-radius); background: var(--surface-2); color: var(--seg-fg); cursor: pointer; }
-.seg button[aria-pressed="true"] { background: var(--seg-on-bg); color: var(--seg-on-fg); }
+.seg button[aria-pressed="true"] { background: var(--seg-on-bg); color: var(--seg-on-fg); box-shadow: inset 0 0 0 1px var(--lazo-azul-claro); }
 .crow { display: flex; align-items: center; gap: 9px; height: var(--row-h); border-radius: var(--row-radius); padding: 0 6px; white-space: nowrap; position: relative; }
 .crow:hover { background: var(--edge); }
 .crow .txt { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; }
@@ -145,7 +154,7 @@ html.island *, html.island *::before, html.island *::after {
 .ctotal .mut { color: var(--text-2); font-size: 12px; }
 .ctotal .big { font-size: 20px; font-weight: 700; }
 .cempty { padding: 8px 6px; color: var(--text-3); font-size: 12px; }
-.cbanner { margin: 4px 0; border-radius: 8px; background: rgba(255, 159, 10, 0.15); color: #ffb340; font-size: 12px; padding: 4px 8px; }
+.cbanner { margin: 4px 0; border-radius: 8px; background: var(--lazo-cafe); color: #fff; font-size: 12px; padding: 4px 8px; }
 
 /* Listas (maqueta 03, opción C). */
 .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 4px 2px; }
@@ -178,9 +187,9 @@ html.island *, html.island *::before, html.island *::after {
 .chat-msgs { display: flex; flex-direction: column; gap: 6px; padding: 2px 2px 8px; max-height: min(240px, calc(var(--avail) - 64px)); overflow-y: auto; }
 .chat-empty { color: var(--text-3); font-size: 12px; padding: 4px 2px; }
 .bub { white-space: pre-wrap; margin: 0; padding: 6px 10px; overflow-wrap: anywhere; }
-.bub-me { align-self: flex-end; background: var(--blue); color: #fff; border-radius: 14px 14px 4px 14px; max-width: 78%; }
+.bub-me { align-self: flex-end; background: var(--blue); color: #fff; box-shadow: inset 0 0 0 1px var(--lazo-azul-claro); border-radius: 14px 14px 4px 14px; max-width: 78%; }
 .bub-al { align-self: flex-start; background: var(--bubble-lazo); border-radius: 14px 14px 14px 4px; max-width: 84%; }
-.bub-err { align-self: flex-start; background: rgba(255, 69, 58, 0.18); color: #ff9f98; border-radius: 14px 14px 14px 4px; max-width: 84%; }
+.bub-err { align-self: flex-start; background: rgba(143, 19, 19, 0.35); color: #ffb4b4; border-radius: 14px 14px 14px 4px; max-width: 84%; }
 .think { display: flex; gap: 4px; align-self: flex-start; padding: 8px 10px; background: var(--bubble-lazo); border-radius: 14px; }
 .think i { width: 5px; height: 5px; border-radius: 50%; background: var(--text-3); display: block; }
 .chat-input { display: flex; align-items: center; gap: 6px; background: var(--field-bg); border-radius: 999px; padding: 4px 4px 4px 12px; }
@@ -189,7 +198,7 @@ html.island *, html.island *::before, html.island *::after {
 .chat-btn { width: var(--icon-btn); height: var(--icon-btn); border-radius: 50%; display: grid; place-items: center; flex: none; padding: 0; border: 0; background: transparent; color: var(--icon); cursor: pointer; }
 .chat-btn svg { width: 15px; height: 15px; }
 .chat-btn:hover { background: var(--edge); }
-.chat-btn.go { background: var(--blue); color: #fff; }
+.chat-btn.go { background: var(--blue); color: #fff; box-shadow: inset 0 0 0 1px var(--lazo-azul-claro); }
 .chat-btn.go:disabled { opacity: 0.5; }
 .chat-btn.rec { background: var(--rec); color: #fff; }
 
@@ -215,7 +224,7 @@ html.island *, html.island *::before, html.island *::after {
 .fm-btns { display: flex; justify-content: flex-end; gap: 6px; flex: none; padding-top: 2px; }
 .fm-b { flex: none; white-space: nowrap; font: inherit; font-size: 12px; padding: 6px 12px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.08); color: var(--text); cursor: pointer; }
 .fm-b:hover { background: var(--hover); }
-.fm-b.pri { background: var(--seg-on-bg); color: var(--seg-on-fg); font-weight: 650; }
+.fm-b.pri { background: var(--seg-on-bg); color: var(--seg-on-fg); font-weight: 650; box-shadow: inset 0 0 0 1px var(--lazo-azul-claro); }
 .fm-b:disabled { opacity: 0.5; }
 .fm-small { font: inherit; font-size: 11px; padding: 3px 9px; border: 0; border-radius: 999px; background: var(--surface-2); color: var(--seg-fg); cursor: pointer; }
 .fm-covers { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; }
@@ -249,7 +258,7 @@ html.island *, html.island *::before, html.island *::after {
 .al-btns { display: flex; justify-content: center; gap: 8px; padding: 0 0 10px; }
 .al-b { flex: none; white-space: nowrap; font: inherit; font-size: 12px; padding: 5px 12px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.09); color: var(--text); cursor: pointer; }
 .al-b:hover { background: var(--hover); }
-.al-b.pri { background: #fff; color: #111; font-weight: 650; }
+.al-b.pri { background: var(--lazo-azul); color: #fff; font-weight: 650; box-shadow: inset 0 0 0 1px var(--lazo-azul-claro); }
 .al.banner { display: flex; align-items: center; height: 100%; }
 .al.banner .al-row { flex: 1; min-width: 0; height: auto; padding: 0 0 0 14px; }
 .al.banner .al-when { margin: 0 10px 0 auto; }
@@ -300,7 +309,8 @@ html.island *, html.island *::before, html.island *::after {
 /* ---- Lazo: toma de medicina, citas, apoyos ---- */
 .hoy-date { color: var(--text-2); font-size: 12px; }
 .hoy-card { border: 2px solid var(--edge-strong, #555); border-radius: 14px; padding: 10px 12px; margin: 2px 0 6px; display: grid; gap: 3px; }
-.hoy-card.urgent { border-color: var(--gc-5); }
+.hoy-card.urgent { border-color: #ffd166; }
+.hoy-card { background: var(--surface-1); }
 .hoy-kicker { color: var(--text-2); font-size: 11px; font-weight: 600; }
 .hoy-name { font-size: 20px; font-weight: 800; line-height: 1.15; }
 .hoy-dose { font-size: 13px; font-weight: 600; }
@@ -309,10 +319,10 @@ html.island *, html.island *::before, html.island *::after {
 .hoy-btns .fm-b { min-height: 38px; flex: 1 1 auto; font-weight: 700; font-size: 12px; }
 .hoy-btns .fm-b.pri { flex: 2 1 120px; font-size: 14px; }
 .st { display: inline-flex; align-items: center; gap: 4px; width: fit-content; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1.5px solid var(--text-3); white-space: nowrap; flex: none; }
-.st-tomada { background: var(--gc-10); color: #000; border-color: var(--gc-10); }
-.st-atrasada { background: var(--gc-11); color: #000; border-color: var(--gc-11); }
-.st-ahora { background: #fff; color: #000; border-color: #fff; }
-.st-pospuesta { background: var(--gc-5); color: #000; border-color: var(--gc-5); }
+.st-tomada { background: var(--lazo-verde); color: #fff; border-color: #34c77b; }
+.st-atrasada { background: var(--lazo-rojo); color: #fff; border-color: #ff8a8a; }
+.st-ahora { background: var(--lazo-azul); color: #fff; border-color: var(--lazo-azul-claro); }
+.st-pospuesta { background: var(--lazo-cafe); color: #fff; border-color: #ffd166; }
 .st-omitida { color: var(--text-2); }
 .undo { flex: none; background: none; border: 1.5px solid var(--text-3); color: var(--text); border-radius: 8px; padding: 3px 8px; font: inherit; font-size: 11px; cursor: pointer; }
 .undo:hover { background: var(--edge); }
