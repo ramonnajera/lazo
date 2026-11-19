@@ -346,7 +346,14 @@ test('/voz: confirmar, posponer, omitir y consultar con frases naturales', async
     assert.equal((await s.p('GET', '/tomas')).body.tomas[0].estado, 'tomada');
     assert.equal(s.hogar().medicamentos[0].existencias, 4); // la orden de voz también descuenta existencias
 
-    const o = await s.p('POST', '/voz', { texto: 'no la tomaré' }); // ahora la del 20:00
+    // A las 8 de la mañana la de las 20:00 todavía no se puede omitir ni confirmar por voz (fuera de la ventana de 2 h)
+    const temprano = await s.p('POST', '/voz', { texto: 'no la tomaré' });
+    assert.match(temprano.body.reply, /Todavía no es hora: tu siguiente toma es Losartán, 50 mg, a las 8 de la noche/);
+    assert.equal(temprano.body.accion.hecho, false);
+    assert.equal((await s.p('GET', '/tomas')).body.tomas[1].estado, 'pendiente');
+
+    s.clock.set('2026-11-19T00:30:00Z'); // 18:30 local: ya dentro de las 2 horas previas
+    const o = await s.p('POST', '/voz', { texto: 'no la tomaré' });
     assert.equal(o.body.reply, 'De acuerdo. Marqué Losartán como omitida.');
     assert.equal((await s.p('GET', '/tomas')).body.tomas[1].estado, 'omitida');
 

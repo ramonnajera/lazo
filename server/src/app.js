@@ -433,15 +433,22 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
   });
 
   // Órdenes en español, por voz o por texto (la isla de Windows y el chat las envían aquí).
+  /** Una dosis que aún no toca solo se puede confirmar u omitir si cae en las próximas 2 horas (evita marcar la de la noche en la mañana). */
+  const VENTANA_ADELANTO_MIN = 120;
+  const dentroDeVentana = (x, n) => X.requiereAtencion(x.estado) || x.estado === 'pospuesta' || T.absMin(x.fecha, x.hora) - T.absMin(n.date, n.time) <= VENTANA_ADELANTO_MIN;
+
   function ejecutarOrden(h, d, texto) {
     const n = ahora();
     const tolerancia = (d.perfil && d.perfil.tolerancia) || S.TOLERANCIA_MIN;
     const hoy = S.dayView(d, n.date, n, tolerancia);
     const abiertas = S.candidatas(d, n, tolerancia); // incluye la de las 23:50 si ya pasó la medianoche
-    const dosis = abiertas.find((x) => X.requiereAtencion(x.estado)) || abiertas.find((x) => x.estado === 'pendiente' || x.estado === 'pospuesta');
+    const siguiente = abiertas.find((x) => X.requiereAtencion(x.estado)) || abiertas.find((x) => x.estado === 'pendiente' || x.estado === 'pospuesta');
+    const dosis = siguiente && dentroDeVentana(siguiente, n) ? siguiente : null;
     const c = interpretar(texto);
     const registrar = (estado, minutos) => aplicarToma(h, d, { medicamentoId: dosis.medicamentoId, fecha: dosis.fecha, hora: dosis.hora, estado, ...(minutos ? { minutos } : {}) });
-    const sinToma = { reply: 'No tienes ninguna toma pendiente.', accion: { tipo: c.tipo, hecho: false } };
+    const sinToma = siguiente
+      ? { reply: `Todavía no es hora: tu siguiente toma es ${X.textoDosis(siguiente.nombre, siguiente.dosis)}, a las ${X.horaHablada(siguiente.hora)}.`, accion: { tipo: c.tipo, hecho: false } }
+      : { reply: 'No tienes ninguna toma pendiente.', accion: { tipo: c.tipo, hecho: false } };
     switch (c.tipo) {
       case 'pedir-ayuda': {
         const r = pedirAyuda(h, d, texto.slice(0, 200));
@@ -506,7 +513,9 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
         if (!['tomada', 'omitida', 'pospuesta'].includes(estado)) throw bad('estado no válido');
         let candidatas = S.candidatas(d, n, tol).filter((x) => X.requiereAtencion(x.estado) || x.estado === 'pendiente' || x.estado === 'pospuesta');
         if (medicina) candidatas = candidatas.filter((x) => norm(x.nombre).includes(norm(medicina)));
-        const dosis = candidatas.find((x) => X.requiereAtencion(x.estado)) || candidatas[0];
+        const elegida = candidatas.find((x) => X.requiereAtencion(x.estado)) || candidatas[0];
+        if (elegida && !dentroDeVentana(elegida, n)) throw bad(`todavía no es hora de ${elegida.nombre}: toca a las ${elegida.hora}; solo se registra a partir de 2 horas antes`);
+        const dosis = elegida;
         if (!dosis) throw bad(medicina ? `no hay una toma pendiente de ${medicina}` : 'no hay ninguna toma pendiente');
         aplicarToma(h, d, { medicamentoId: dosis.medicamentoId, fecha: dosis.fecha, hora: dosis.hora, estado, ...(minutos ? { minutos } : {}) });
         return { ok: true, medicina: dosis.nombre, hora: dosis.hora, estado };
