@@ -71,8 +71,12 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private fun cargarCache() {
         val tomas = aplicarLocal(cache.read("tomas").lista("tomas", Dosis::de))
+        // El nombre de la persona lo manda el perfil del servidor (si se cambió desde otro dispositivo, aquí se actualiza)
+        val nombrePerfil = cache.read("perfil")?.optJSONObject("perfil")?.optString("nombre")?.takeIf { it.isNotBlank() && prefs.rol == Rol.PERSONA }
+        if (nombrePerfil != null) prefs.nombre = nombrePerfil
         _ui.update {
             it.copy(
+                nombre = nombrePerfil ?: it.nombre,
                 perfil = cache.read("perfil")?.optJSONObject("perfil")?.let(Perfil::de), medicamentos = cache.read("medicamentos").lista("medicamentos", Medicamento::de),
                 tomas = tomas, proxima = proximaDe(cache.read("proxima")?.optJSONObject("dosis")?.let(Dosis::de), tomas), citas = cache.read("citas").lista("citas", Cita::de),
                 mediciones = cache.read("mediciones").lista("mediciones", Medicion::de), alertas = cache.read("alertas").lista("alertas", Alerta::de),
