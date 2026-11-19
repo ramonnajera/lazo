@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -111,6 +112,8 @@ fun Aviso(texto: String, peligro: Boolean = false, modifier: Modifier = Modifier
 @Composable
 fun MensajeVivo(texto: String?, alCerrar: () -> Unit) {
     if (texto == null) return
+    // El aviso se anuncia al instante (TalkBack) y se quita solo a los 8 s; «Entendido» lo cierra antes.
+    LaunchedEffect(texto) { kotlinx.coroutines.delay(8_000); alCerrar() }
     Column(Modifier.semantics { liveRegion = LiveRegionMode.Assertive }) {
         Aviso(texto)
         TextButton(onClick = alCerrar, modifier = Modifier.heightIn(min = 56.dp)) { Text("Entendido", style = MaterialTheme.typography.labelLarge) }
