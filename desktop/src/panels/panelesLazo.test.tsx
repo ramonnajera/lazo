@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { Cita, ListaConvocatorias, Medicion, Toma } from "../api/types";
 import { ApoyosPanel } from "./Apoyos";
 import { CitasPanel } from "./Citas";
-import { HoyPanel, siguienteToma, textoEstado } from "./Hoy";
+import { Chip, HoyPanel, siguienteToma, textoEstado } from "./Hoy";
 import { SaludPanel } from "./Salud";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -159,5 +159,14 @@ describe("hablar con lazo desde Hoy", () => {
   it("sin_onTalk_no_se_muestra", () => {
     render(<HoyPanel items={[]} today="2026-11-18" />);
     expect(screen.queryByRole("button", { name: /Hablar con Lazo/ })).toBeNull();
+  });
+});
+
+describe("etiqueta corta de estado", () => {
+  it("en_la_lista_la_toma_de_ahora_dice_Ahora_y_no_Es", () => {
+    const t: Toma = { medicamentoId: "r", nombre: "Risperidona", dosis: "0.5 mg", instrucciones: "", fecha: "2026-11-18", hora: "20:00", estado: "ahora", horaReal: null, hasta: null };
+    const { container } = render(<Chip t={t} corto />);
+    expect(container.textContent).toContain("Ahora");
+    expect(container.textContent).not.toMatch(/\bEs\b/);
   });
 });

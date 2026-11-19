@@ -149,8 +149,44 @@ parrafo("**¿Cómo se mantiene en el tiempo?** Con código abierto y documentado
 titulo("Material de apoyo")
 vineta("Video de presentación y demostración de 3 a 10 minutos (archivo PMT2026_Lazo, en Google Drive).")
 vineta("Código fuente y documentación del proyecto (servidor, Android y Windows).")
-vineta("Capturas de pantalla a tamaño normal, con alto contraste y con letra al doble de tamaño.")
+vineta("Capturas de pantalla de la aplicación y del asistente de escritorio (anexo al final de este ensayo).")
 parrafo("Toda la demostración usa personas y datos ficticios; el proyecto no contiene información de personas reales.")
+
+# ---------- Anexo: capturas de pantalla (persona ficticia del demo) ----------
+from docx.enum.section import WD_SECTION
+doc.add_page_break()
+titulo("Anexo. Capturas de pantalla")
+parrafo("Capturas del prototipo con la persona ficticia de la demostración, Mateo, un joven autista que toma risperidona y lleva terapia ocupacional y de lenguaje.")
+CAPTURAS = [
+    ("01_hoy.png", "1. Inicio: hablar con Lazo, pedir ayuda y la toma que toca ahora, leída en voz alta."),
+    ("05_hablar_con_lazo.png", "2. Hablar con Lazo por voz o por escrito, en lenguaje natural."),
+    ("03_citas.png", "3. Citas con notas pensadas para la persona; se recuerdan la víspera y dos horas antes."),
+    ("02_medicinas.png", "4. Medicinas: para cuántos días alcanza cada una y aviso para resurtir."),
+    ("04_salud.png", "5. Cómo estoy: presión, glucosa, ánimo, dolor y peso con colores e íconos."),
+    ("06_necesito_ayuda.png", "6. Necesito ayuda: aviso a los cuidadores y llamada al 911."),
+    ("07_cuidador_aviso.png", "7. Lo que ve el cuidador: el aviso urgente aparece primero."),
+    ("08_alto_contraste.png", "8. Modo de alto contraste (amarillo sobre negro)."),
+]
+import os
+from docx.enum.table import WD_TABLE_ALIGNMENT
+AQUI = os.path.dirname(os.path.abspath(__file__))
+tabla = doc.add_table(rows=0, cols=3)
+tabla.alignment = WD_TABLE_ALIGNMENT.CENTER
+for i in range(0, len(CAPTURAS), 3):
+    fila_xml = tabla.add_row()
+    from docx.oxml import OxmlElement
+    trpr = fila_xml._tr.get_or_add_trPr(); no_partir = OxmlElement("w:cantSplit"); trpr.append(no_partir)  # imagen y pie juntos
+    fila = fila_xml.cells
+    for j, (img, pie) in enumerate(CAPTURAS[i:i + 3]):
+        c = fila[j]
+        pi = c.paragraphs[0]; pi.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        pi.add_run().add_picture(os.path.join(AQUI, "capturas", img), width=Cm(4.0))
+        pc = c.add_paragraph(); pc.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = pc.add_run(pie); r.font.name = "Arial"; r.font.size = Pt(9); r.italic = True
+p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+p.add_run().add_picture(os.path.join(AQUI, "capturas", "09_isla_windows.png"), width=Cm(12))
+p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+r = p.add_run("9. Asistente de Windows: la barra superior con el mismo día, sincronizado con el teléfono."); r.font.name = "Arial"; r.font.size = Pt(10); r.italic = True
 
 doc.save("PMT2026_Lazo_ensayo.docx")
 print("listo: PMT2026_Lazo_ensayo.docx")

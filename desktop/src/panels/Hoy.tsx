@@ -48,7 +48,8 @@ export function resumenDia(items: Toma[]): string {
 
 /** `corto`: en la lista solo cabe «Tomada»; el detalle (la hora) va en la tarjeta grande y en el texto para lectores de pantalla. */
 export function Chip({ t, corto = false }: { t: Toma; corto?: boolean }) {
-  const texto = corto ? textoEstado(t).split(" ")[0] : textoEstado(t);
+  // En la lista, una sola palabra que se entienda sola: «Es la hora» → «Ahora» (cortarla dejaba «Es»)
+  const texto = corto ? (t.estado === "ahora" ? "Ahora" : textoEstado(t).split(" ")[0]) : textoEstado(t);
   return (
     <span className={`st st-${t.estado}`} title={textoEstado(t)}>
       <span aria-hidden>{SIGNO[t.estado]}</span> {texto}
