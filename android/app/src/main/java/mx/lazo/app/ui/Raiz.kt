@@ -132,7 +132,7 @@ fun Principal(vm: AppViewModel, ui: Ui) {
                 val conFab = pila.size == 1 && ui.rol == Rol.PERSONA && !(menu && grande) && actual != Pantalla.Hoy
                 if (menu && grande) MenuGrande(pestanas, actual) { abrir(it) } else when (val p = actual) {
                     Pantalla.Hoy -> PantallaHoy(vm, ui, ::abrir)
-                    Pantalla.Chat -> PantallaChat(vm, ui)
+                    Pantalla.Chat -> PantallaChat(vm, ui, ::abrir)
                     Pantalla.Medicinas -> PantallaMedicinas(ui, ::abrir)
                     is Pantalla.FormMed -> FormMedicamento(vm, ui, p.id) { pila.removeAt(pila.lastIndex) }
                     Pantalla.Citas -> PantallaCitas(ui, ::abrir)

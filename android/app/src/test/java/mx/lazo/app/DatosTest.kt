@@ -140,4 +140,11 @@ class DatosTest {
         assertEquals(1.8f, prefs.escalaTexto); assertTrue(prefs.altoContraste) // la letra grande y el contraste no se pierden
         assertTrue(prefs.programadasCitas().isEmpty())
     }
+
+    @Test fun parseaResurtir() {
+        val r = Resurtir.de(JSONObject("""{"id":"a","nombre":"Metformina","dosis":"850 mg","existencias":9,"porDia":2,"diasRestantes":4,"seAcaba":"2026-11-22","alcanzaHastaFin":false,"urgente":false}"""))
+        assertEquals(Resurtir("a", 4, "2026-11-22", false, false), r)
+        val sinFecha = Resurtir.de(JSONObject("""{"id":"b","diasRestantes":null,"seAcaba":null,"alcanzaHastaFin":true,"urgente":false}"""))
+        assertNull(sinFecha.diasRestantes); assertNull(sinFecha.seAcaba); assertTrue(sinFecha.alcanzaHastaFin)
+    }
 }

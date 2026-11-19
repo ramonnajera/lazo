@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import mx.lazo.app.data.Medicamento
 import mx.lazo.app.domain.horaCorta
 import mx.lazo.app.domain.textoDosis
+import mx.lazo.app.domain.textoResurtir
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -34,7 +35,11 @@ fun PantallaMedicinas(ui: Ui, abrir: (Pantalla) -> Unit) {
         if (ui.medicamentos.isEmpty()) item { Cuerpo("Todavía no has agregado ninguna medicina. Cuando lo hagas, Lazo te avisará y te leerá en voz alta cada toma.", secundario = true) }
         items(ui.medicamentos, key = { it.id }) { m ->
             val bajas = m.existencias != null && m.existencias <= 3
-            TarjetaLegible("${textoDosis(m.nombre, m.dosis)}. ${resumenHorarios(m)}.${if (!m.activo) " En pausa." else ""}${if (bajas) " Quedan pocas dosis." else ""} Toca para editar.") {
+            // Para cuántos días alcanza (del servidor, que recorre el calendario real); si no hay dato, el aviso simple de pocas dosis
+            val rs = ui.resurtir[m.id]?.takeIf { m.activo }
+            val alcanza = rs?.let(::textoResurtir)
+            val urgente = rs?.urgente ?: bajas
+            TarjetaLegible("${textoDosis(m.nombre, m.dosis)}. ${resumenHorarios(m)}.${if (!m.activo) " En pausa." else ""}${alcanza?.let { " $it" } ?: if (bajas) " Quedan pocas dosis." else ""}") {
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     IconoChip(Icons.Filled.Medication, Acento.VERDE)
                     Text(m.nombre, style = MaterialTheme.typography.titleLarge, color = LocalPaleta.current.texto, modifier = Modifier.weight(1f))
@@ -42,7 +47,13 @@ fun PantallaMedicinas(ui: Ui, abrir: (Pantalla) -> Unit) {
                 if (m.dosis.isNotBlank()) Cuerpo(m.dosis)
                 Cuerpo(resumenHorarios(m), secundario = true)
                 if (!m.activo) Aviso("En pausa: no te avisará.")
-                if (bajas) Aviso(if (m.existencias == 0) "Ya no quedan dosis." else "Quedan pocas dosis: ${m.existencias}.", peligro = true)
+                if (alcanza != null) {
+                    val texto = "$alcanza${if (m.existencias != null) " Te quedan ${m.existencias}." else ""}"
+                    // Solo se resalta cuando falta poco (≤ 7 días); con más, es información tranquila, no un aviso
+                    val pronto = urgente || (rs?.diasRestantes ?: Int.MAX_VALUE) <= 7
+                    if (pronto) Aviso(texto, peligro = urgente) else Cuerpo(texto, secundario = true)
+                }
+                else if (bajas) Aviso(if (m.existencias == 0) "Ya no quedan dosis." else "Quedan pocas dosis: ${m.existencias}.", peligro = true)
                 BotonGrande("Editar", { abrir(Pantalla.FormMed(m.id)) }, tono = Tono.NEUTRO, descripcion = "Editar ${m.nombre}")
             }
         }

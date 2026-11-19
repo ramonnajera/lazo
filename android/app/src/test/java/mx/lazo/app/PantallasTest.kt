@@ -68,6 +68,8 @@ class PantallasTest {
         Alerta("o", "dosis-omitida", "media", "2026-11-17T20:00:00-06:00", "Omitió: Metformina", "Marcó como omitida la toma de las 20:00.", true),
     )
 
+    private val resurtir = mapOf("a" to Resurtir("a", 2, "2026-11-20", false, true), "b" to Resurtir("b", 30, "2026-12-18", false, false))
+
     @Before fun preparar() { Prefs.de(app).cerrarSesion(); vm = AppViewModel(app) }
 
     private fun mostrar(alto: Boolean = false, escala: Float = 1.25f, contenido: @Composable () -> Unit) = rule.setContent { LazoTema(alto, escala) { androidx.compose.material3.Surface(color = LocalPaleta.current.fondo) { contenido() } } }
@@ -307,6 +309,24 @@ class PantallasTest {
         assertTrue("debe verse sin desplazarse (arriba de 600 dp)", n.bottom < 600f * 2f)
     }
 
+    @Test fun decirAuxilioEnElChatPideAyudaYOfreceEl911AunSinConexion() {
+        mostrar { val u by vm.ui.collectAsState(); PantallaChat(vm, u) }
+        vm.enviarAlChat("¡Auxilio!")
+        val limite = System.currentTimeMillis() + 5_000
+        while (vm.ui.value.ayuda !is EstadoAyuda.Fallida && System.currentTimeMillis() < limite) { Thread.sleep(50); org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle() }
+        assertTrue("estado: ${vm.ui.value.ayuda}", vm.ui.value.ayuda is EstadoAyuda.Fallida)
+        rule.waitForIdle()
+        assertEquals(mx.lazo.app.domain.textoAyudaFallida(true), vm.ui.value.chat.last().texto) // Lazo responde en el chat
+        rule.onNodeWithText("Llamar al 911").assertExists().assertHasClickAction()
+    }
+
+    @Test fun medicinasDicenParaCuantosDiasAlcanzan() {
+        mostrar { PantallaMedicinas(ui.copy(resurtir = resurtir), {}) }
+        rule.onNodeWithText("Alcanza para 2 días: se acaba el vie 20 nov. Resúrtela pronto. Te quedan 2.").assertExists()
+        rule.onNodeWithText("Alcanza para 30 días: se acaba el vie 18 dic. Te quedan 28.").assertExists()
+        rule.onNodeWithText("Quedan pocas dosis: 2.").assertDoesNotExist() // con el dato del servidor no se repite el aviso simple
+    }
+
     @Test fun elCuidadorVePrimeroYDestacadoElPedidoDeAyuda() {
         val alertas = listOf(
             Alerta("d", "dosis-atrasada", "alta", "2026-11-18T12:00:00-06:00", "Sin confirmar: Losartán", "La toma de las 12:00 no se ha confirmado.", false),
@@ -358,7 +378,7 @@ class PantallasTest {
         val resumen = Resumen("Ana Ejemplo", Discapacidad.AMBAS, tomas[1], 83, listOf(DiaAdherencia("2026-11-16", 3, 3, 0, 0, 0), DiaAdherencia("2026-11-17", 3, 2, 1, 0, 0), DiaAdherencia("2026-11-18", 3, 1, 0, 1, 1)), citas, listOf(TipoMedicion.PRESION to "120/80", TipoMedicion.GLUCOSA to "260 mg/dL"),
             listOf(Alerta("x", "dosis-atrasada", "alta", "", "Sin confirmar: Losartán", "La toma de las 12:00 no se ha confirmado.", false)))
         val pantallas: List<Pair<String, @Composable () -> Unit>> = listOf(
-            "hoy" to { PantallaHoy(vm, ui, {}) }, "medicinas" to { PantallaMedicinas(ui, {}) }, "form_medicina" to { FormMedicamento(vm, ui, "a") {} },
+            "hoy" to { PantallaHoy(vm, ui, {}) }, "medicinas" to { PantallaMedicinas(ui.copy(resurtir = resurtir), {}) }, "form_medicina" to { FormMedicamento(vm, ui, "a") {} },
             "citas" to { PantallaCitas(ui, {}) }, "seguimiento" to { PantallaSeguimiento(vm, ui, {}) }, "form_dolor" to { FormMedicion(vm, TipoMedicion.DOLOR) {} },
             "convocatorias" to { PantallaConvocatorias(vm, ui) }, "accesibilidad" to { PantallaAccesibilidad(vm, ui) }, "mas" to { PantallaMas(ui, {}) },
             "bienvenida" to { Bienvenida(vm, Ui()) }, "chat" to { PantallaChat(vm, chat) }, "chat_grabando" to { PantallaChat(vm, chat.copy(grabando = true)) },
@@ -367,6 +387,7 @@ class PantallasTest {
             "ayuda_enviada" to { PantallaHoy(vm, ui.copy(ayuda = EstadoAyuda.Enviada(2)), {}) },
             "ayuda_sin_cuidadores" to { PantallaHoy(vm, ui.copy(ayuda = EstadoAyuda.Enviada(0)), {}) },
             "ayuda_sin_conexion" to { PantallaHoy(vm, ui.copy(ayuda = EstadoAyuda.Fallida(true)), {}) },
+            "chat_ayuda" to { PantallaChat(vm, chat.copy(chat = chat.chat + MensajeChat(true, "¡Auxilio!") + MensajeChat(false, mx.lazo.app.domain.textoAyudaEnviada(2)), ayuda = EstadoAyuda.Enviada(2))) },
             "cuidador_avisos_ayuda" to { PantallaAlertas(vm, ui.copy(rol = Rol.CUIDADOR, alertas = alertasCuidador)) },
             "cuidador_resumen_ayuda" to { PantallaResumen(vm, ui.copy(rol = Rol.CUIDADOR, resumen = resumen.copy(alertas = alertasCuidador))) },
         )

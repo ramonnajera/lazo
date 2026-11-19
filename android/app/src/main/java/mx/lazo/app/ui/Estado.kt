@@ -32,7 +32,7 @@ data class Ui(
     val cargando: Boolean = false, val mensaje: String? = null, val sinConexion: Boolean = false, val sinEnviar: Int = 0, val destino: String? = null,
     val escala: Float = 1.25f, val altoContraste: Boolean = false, val voz: Boolean = true, val velocidad: Float = 0.9f,
     val chat: List<MensajeChat> = emptyList(), val chatOcupado: Boolean = false, val grabando: Boolean = false, val guardando: Boolean = false,
-    val ayuda: EstadoAyuda = EstadoAyuda.Inactiva,
+    val ayuda: EstadoAyuda = EstadoAyuda.Inactiva, val resurtir: Map<String, Resurtir> = emptyMap(),
 ) {
     val conectado get() = rol != null
 }
@@ -78,6 +78,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                 mediciones = cache.read("mediciones").lista("mediciones", Medicion::de), alertas = cache.read("alertas").lista("alertas", Alerta::de),
                 resumen = cache.read("resumen")?.let(Resumen::de), convocatorias = cache.read("convocatorias")?.let(ListaConvocatorias::de),
                 sinEnviar = prefs.cola().size,
+                resurtir = cache.read("resurtir").lista("medicamentos", Resurtir::de).associateBy { it.id },
                 cuidadores = cache.read("circulo").lista("cuidadores") { c -> Cuidador(c.getString("id"), c.getString("nombre"), c.optString("parentesco")) },
                 dispositivos = cache.read("dispositivos").lista("dispositivos") { c -> Cuidador(c.getString("id"), c.getString("nombre"), "") },
             )
@@ -123,7 +124,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                 val res = async { if (!persona) pedir("resumen") { a.resumen() } else null }
                 val cir = async { if (persona) pedir("circulo") { a.circulo() } else null }
                 val disp = async { if (persona) pedir("dispositivos") { a.dispositivos() } else null }
-                listOf(perfil, citas, alertas, conv, meds, tomas, prox, meds2, res, cir, disp).forEach { it.await() }
+                val resurtir = async { if (persona) pedir("resurtir") { a.resurtir() } else null }
+                listOf(perfil, citas, alertas, conv, meds, tomas, prox, meds2, res, cir, disp, resurtir).forEach { it.await() }
             }
             cargarCache()
             // Un error que no cambia (p. ej. el servidor caído) se muestra una vez, no cada minuto que la app se refresca sola
@@ -261,6 +263,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                 hablar(if (n == 0) "Todavía no hay convocatorias guardadas. Abro la lista para que las actualices." else "Hay ${plural(n, "convocatoria", "convocatorias")} para personas con discapacidad. Abro la lista.")
                 _ui.update { it.copy(destino = "convocatorias") }
             }
+            Comando.PedirAyuda -> viewModelScope.launch { avisarAyuda(frase) }
             Comando.Ayuda -> hablar(AYUDA_VOZ)
             Comando.Desconocido -> hablar("No te entendí. Di ayuda para saber qué puedes pedirme.")
         }
@@ -276,6 +279,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         if (prefs.voz) hablar(reply, forzar = false)
         val accion = r.optJSONObject("accion")
         if (accion?.optBoolean("hecho") == true) {
+            // Lo dijo por voz y el servidor ya avisó: se pide otra vez (no se duplica) para saber a cuántos llegó y ofrecer el 911
+            if (accion.optString("tipo") == "pedir-ayuda") viewModelScope.launch { avisarAyuda(null, leer = false) }
             if (accion.optString("tipo") == "convocatorias") _ui.update { it.copy(destino = "convocatorias") }
             refrescar()
         }
@@ -289,7 +294,9 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         mensajeChat(MensajeChat(true, t))
         _ui.update { it.copy(chatOcupado = true) }
         viewModelScope.launch {
-            try { alResponder(api().vozTexto(t)) } catch (e: ApiException) { falloChat(e) }
+            // Un pedido de ayuda escrito va directo a POST /ayuda: así, aun sin conexión, la respuesta ofrece llamar al 911
+            if (interpretar(t) == Comando.PedirAyuda) mensajeChat(MensajeChat(false, avisarAyuda(t)))
+            else try { alResponder(api().vozTexto(t)) } catch (e: ApiException) { falloChat(e) }
             _ui.update { it.copy(chatOcupado = false) }
         }
     }
@@ -377,18 +384,26 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     /** Segundo toque: avisa a los cuidadores. Sin conexión, igual ofrece llamar al 911. */
     fun confirmarAyuda(mensaje: String? = null) {
         if (_ui.value.ayuda != EstadoAyuda.Confirmando) return
+        viewModelScope.launch { avisarAyuda(mensaje) }
+    }
+
+    /**
+     * Envía el pedido de ayuda (POST /ayuda) y deja la pantalla ofreciendo el 911. Lo usan el botón (tras confirmar) y la voz
+     * («necesito ayuda», «auxilio»…: decirlo ya es la intención). El servidor no duplica un pedido repetido en el mismo minuto,
+     * así que repetirlo solo sirve para saber a cuántos cuidadores llegó. Devuelve el texto del resultado.
+     */
+    private suspend fun avisarAyuda(mensaje: String?, leer: Boolean = true): String {
         _ui.update { it.copy(ayuda = EstadoAyuda.Enviando) }
-        viewModelScope.launch {
-            val estado = try {
-                val r = api().pedirAyuda(mensaje)
-                EstadoAyuda.Enviada(r.optInt("cuidadores", 0))
-            } catch (e: ApiException) {
-                EstadoAyuda.Fallida(sinConexion = e.codigo == 0)
-            }
-            _ui.update { it.copy(ayuda = estado, sinConexion = if (estado is EstadoAyuda.Fallida && estado.sinConexion) true else it.sinConexion) }
-            // Siempre en voz alta: quien no ve la pantalla tiene que saber si su aviso llegó
-            hablar(if (estado is EstadoAyuda.Enviada) textoAyudaEnviada(estado.cuidadores) else textoAyudaFallida((estado as EstadoAyuda.Fallida).sinConexion), forzar = true)
+        val estado = try {
+            EstadoAyuda.Enviada(api().pedirAyuda(mensaje).optInt("cuidadores", 0))
+        } catch (e: ApiException) {
+            EstadoAyuda.Fallida(sinConexion = e.codigo == 0)
         }
+        _ui.update { it.copy(ayuda = estado, sinConexion = if (estado is EstadoAyuda.Fallida && estado.sinConexion) true else it.sinConexion) }
+        val texto = if (estado is EstadoAyuda.Enviada) textoAyudaEnviada(estado.cuidadores) else textoAyudaFallida((estado as EstadoAyuda.Fallida).sinConexion)
+        // Siempre en voz alta: quien no ve la pantalla tiene que saber si su aviso llegó
+        if (leer) hablar(texto, forzar = true)
+        return texto
     }
 
     // ---------- accesibilidad ----------

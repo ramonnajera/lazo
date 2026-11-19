@@ -215,4 +215,23 @@ class LogicaPuraTest {
         assertEquals("Última lectura: mié 18 nov 8:00 am", mx.lazo.app.ui.textoUltimaLectura("2026-11-18T08:00:00-06:00"))
         assertNull(mx.lazo.app.ui.textoUltimaLectura("2026-11-18"))
     }
+
+    // ---- pedir ayuda por voz (igual que el servidor) ----
+    @Test fun frasesDeEmergenciaPidenAyudaYAyudaSolaEsLaLista() {
+        for (f in listOf("Necesito ayuda", "¡Auxilio!", "es una emergencia", "ayúdenme por favor", "socorro", "auxilio, no la tomé")) assertEquals(f, Comando.PedirAyuda, interpretar(f))
+        assertEquals(Comando.Ayuda, interpretar("ayuda"))
+        assertEquals(Comando.Ayuda, interpretar("ayúdame con los comandos"))
+        assertTrue(AYUDA_VOZ.contains("necesito ayuda"))
+    }
+
+    // ---- resurtir ----
+    @Test fun textoDeResurtir() {
+        fun r(dias: Int?, seAcaba: String?, hastaFin: Boolean = false, urgente: Boolean = false) = mx.lazo.app.data.Resurtir("a", dias, seAcaba, hastaFin, urgente)
+        assertEquals("Alcanza para 5 días: se acaba el lun 23 nov.", textoResurtir(r(5, "2026-11-23")))
+        assertEquals("Alcanza para 3 días: se acaba el sáb 21 nov. Resúrtela pronto.", textoResurtir(r(3, "2026-11-21", urgente = true)))
+        assertEquals("Alcanza solo para hoy: mañana ya no te alcanza. Resúrtela ya.", textoResurtir(r(1, "2026-11-19", urgente = true)))
+        assertEquals("Se acaba hoy: resúrtela ya.", textoResurtir(r(0, "2026-11-18", urgente = true)))
+        assertEquals("Te alcanza hasta terminar el tratamiento.", textoResurtir(r(null, null, hastaFin = true)))
+        assertNull(textoResurtir(r(null, null))) // más de un año: nada que avisar
+    }
 }

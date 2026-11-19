@@ -39,7 +39,7 @@ private val SUGERENCIAS = listOf("¿Qué sigue?", "¿Qué tengo hoy?", "Mis cita
  * toca una frase sugerida. Lazo responde por escrito y en voz alta. Cada mensaje dice quién habla con texto, no solo con color.
  */
 @Composable
-fun PantallaChat(vm: AppViewModel, ui: Ui) {
+fun PantallaChat(vm: AppViewModel, ui: Ui, abrir: (Pantalla) -> Unit = {}) {
     val contexto = LocalContext.current
     val permiso = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) vm.empezarGrabacion() else vm.avisar("Sin el permiso del micrófono no puedo escucharte. Actívalo en los ajustes del teléfono, o escribe tu orden.")
@@ -55,13 +55,15 @@ fun PantallaChat(vm: AppViewModel, ui: Ui) {
 
     var texto by remember { mutableStateOf("") }
     val lista = rememberLazyListState()
-    LaunchedEffect(ui.chat.size, ui.chatOcupado) { if (ui.chat.isNotEmpty()) lista.animateScrollToItem(lista.layoutInfo.totalItemsCount.coerceAtLeast(1) - 1) }
+    LaunchedEffect(ui.chat.size, ui.chatOcupado, ui.ayuda) { if (ui.chat.isNotEmpty()) lista.animateScrollToItem(lista.layoutInfo.totalItemsCount.coerceAtLeast(1) - 1) }
 
     Column(Modifier.fillMaxSize().imePadding()) {
         LazyColumn(Modifier.weight(1f), state = lista, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Titulo("Hablar con Lazo") }
             item { Burbuja(MensajeChat(false, "Hola${if (ui.nombre.isNotBlank()) ", ${ui.nombre.substringBefore(' ')}" else ""}. Pulsa el micrófono y dime qué necesitas, o escribe. Por ejemplo: «¿qué sigue?» o «ya la tomé».")) }
             items(ui.chat) { Burbuja(it) }
+            // Tras «necesito ayuda» por voz o por escrito: el resultado y «Llamar al 911» quedan aquí mismo, a la mano
+            if (ui.ayuda !is EstadoAyuda.Inactiva && ui.ayuda !is EstadoAyuda.Confirmando) item { PanelAyuda(vm, ui, abrir) }
             if (ui.chatOcupado) item { Cuerpo("Lazo está pensando su respuesta…", secundario = true, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
         }
         LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

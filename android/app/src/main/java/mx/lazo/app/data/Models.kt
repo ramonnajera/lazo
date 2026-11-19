@@ -131,4 +131,11 @@ data class Resumen(
     }
 }
 
+/** Para cuántos días alcanza una medicina (GET /resurtir). `seAcaba` null: alcanza hasta el fin del tratamiento o más de un año. */
+data class Resurtir(val id: String, val diasRestantes: Int?, val seAcaba: String?, val alcanzaHastaFin: Boolean, val urgente: Boolean) {
+    companion object {
+        fun de(o: JSONObject) = Resurtir(o.str("id"), o.intOrNull("diasRestantes"), o.strOrNull("seAcaba"), o.optBoolean("alcanzaHastaFin"), o.optBoolean("urgente"))
+    }
+}
+
 data class Cuidador(val id: String, val nombre: String, val parentesco: String)

@@ -131,6 +131,16 @@ class ServidorRealTest {
         assertTrue(mx.lazo.app.alarm.AlertasJobService.filtrar(Rol.CUIDADOR, alertas, emptySet()).contains(ayuda))
     }
 
+    @Test fun resurtirDiceParaCuantosDiasAlcanza() = runBlocking {
+        val persona = LazoApi(base, LazoApi(base).crearPerfil("Ana Ejemplo", Discapacidad.MOTRIZ, true, false).getString("token"))
+        val hoy = mx.lazo.app.domain.hoyIso()
+        val med = persona.guardarMedicamento(null, JSONObject().put("nombre", "Losartán").put("dosis", "50 mg").put("horarios", org.json.JSONArray(listOf("23:59"))).put("existencias", 2).put("inicio", hoy)).getJSONObject("medicamento").getString("id")
+        val r = persona.resurtir().getJSONArray("medicamentos").let { a -> (0 until a.length()).map { Resurtir.de(a.getJSONObject(it)) } }.single { it.id == med }
+        assertEquals(2, r.diasRestantes) // 2 dosis a las 23:59: alcanzan para hoy y mañana; pasado mañana ya no
+        assertTrue(r.urgente)
+        assertNotNull(mx.lazo.app.domain.textoResurtir(r))
+    }
+
     @Test fun sinServidorElErrorEsClaro() = runBlocking {
         val libre = ServerSocket(0).use { it.localPort }
         val ex = runCatching { LazoApi("http://127.0.0.1:$libre").health() }.exceptionOrNull() as ApiException

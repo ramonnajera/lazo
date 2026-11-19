@@ -4,6 +4,8 @@ import java.text.Normalizer
 
 /** Órdenes por voz de Lazo. Se entienden en español hablado, con o sin acentos, y con variantes naturales. */
 sealed interface Comando {
+    /** «Necesito ayuda», «auxilio»…: avisa a los cuidadores (igual que el servidor). «Ayuda» sola es la lista de órdenes. */
+    data object PedirAyuda : Comando
     data object Tomada : Comando
     data class Posponer(val minutos: Int) : Comando
     data object Omitir : Comando
@@ -36,6 +38,8 @@ fun interpretar(frase: String): Comando {
     val t = normalizar(frase)
     if (t.isEmpty()) return Comando.Desconocido
     return when {
+        // Pedir ayuda va antes que todo: «auxilio, no la tomé» es primero un aviso al círculo
+        contiene(t, "necesito ayuda", "auxilio", "emergencia", "ayudenme", "socorro") -> Comando.PedirAyuda
         // «No la tomaré» debe ganarle a «tomé»
         contiene(t, "omitir", "omito", "omite", "saltar", "salta", "salto", "no la tomare", "no lo tomare", "no la voy a tomar", "no lo voy a tomar", "no la tome", "no lo tome") -> Comando.Omitir
         contiene(t, "pospon", "pospone", "posponer", "pospongo", "mas tarde", "despues", "recuerdame en", "recuerdamelo en") -> Comando.Posponer(minutosDe(t))
@@ -49,4 +53,4 @@ fun interpretar(frase: String): Comando {
     }
 }
 
-val AYUDA_VOZ = "Puedes decir: ya la tomé. Pospón diez minutos. Omitir. Qué sigue. Qué tengo hoy. Mis citas. O convocatorias."
+val AYUDA_VOZ = "Puedes decir: ya la tomé. Pospón diez minutos. Omitir. Qué sigue. Qué tengo hoy. Mis citas. O convocatorias. Si te pasa algo, di: necesito ayuda, y aviso a tus cuidadores."

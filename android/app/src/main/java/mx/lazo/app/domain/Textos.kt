@@ -134,3 +134,16 @@ fun accionesToma(e: Estado): List<AccionToma> = when (e) {
     Estado.TOMADA, Estado.OMITIDA -> listOf(AccionToma("Deshacer", Estado.PENDIENTE))
     else -> listOf(AccionToma("Ya la tomé", Estado.TOMADA), AccionToma("Posponer 10 minutos", Estado.POSPUESTA, 10), AccionToma("Omitir esta toma", Estado.OMITIDA))
 }
+
+// ---------- resurtir ----------
+/** «Alcanza para 5 días: se acaba el lun 23 nov.» null si no hay nada útil que decir. */
+fun textoResurtir(r: mx.lazo.app.data.Resurtir): String? {
+    val dias = r.diasRestantes
+    return when {
+        r.seAcaba == null && r.alcanzaHastaFin -> "Te alcanza hasta terminar el tratamiento."
+        r.seAcaba == null || dias == null -> null
+        dias <= 0 -> "Se acaba hoy: resúrtela ya."
+        dias == 1 -> "Alcanza solo para hoy: mañana ya no te alcanza. Resúrtela ya."
+        else -> "Alcanza para $dias días: se acaba el ${fechaCorta(r.seAcaba)}.${if (r.urgente) " Resúrtela pronto." else ""}"
+    }
+}

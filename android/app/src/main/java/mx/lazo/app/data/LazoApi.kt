@@ -55,6 +55,7 @@ class LazoApi(base: String, private val token: String? = null) {
     suspend fun resumen() = get("/circulo/resumen")
     suspend fun convocatorias() = get("/convocatorias")
     suspend fun circulo() = get("/circulo")
+    suspend fun resurtir() = get("/resurtir")
 
     suspend fun guardarMedicamento(id: String?, body: JSONObject) = if (id == null) send("POST", "/medicamentos", body) else send("PATCH", "/medicamentos/$id", body)
     suspend fun borrarMedicamento(id: String) = send("DELETE", "/medicamentos/$id")
