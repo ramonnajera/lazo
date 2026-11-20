@@ -49,7 +49,7 @@ const TEXTO = (d) => ({ type: 'string', description: d });
 const HERRAMIENTAS = [
   { name: 'consultar_hoy', description: 'Las tomas de medicina de hoy con su hora y estado (tomada, omitida, pospuesta, pendiente, atrasada) y cuál es la siguiente.', input_schema: objeto({}) },
   { name: 'consultar_medicinas', description: 'Las medicinas de la persona: nombre, dosis, horarios, instrucciones, cuántas pastillas quedan y para cuántos días alcanzan (alcanza_para_dias, se_acaba).', input_schema: objeto({}) },
-  { name: 'consultar_citas', description: 'Las próximas citas médicas.', input_schema: objeto({}) },
+  { name: 'consultar_citas', description: 'Las próximas citas médicas, con lugar, transporte y notas (qué llevar, cómo prepararse).', input_schema: objeto({}) },
   { name: 'consultar_mediciones', description: 'Las últimas mediciones de salud registradas (presión, glucosa, peso, ánimo, dolor).', input_schema: objeto({ tipo: { type: 'string', enum: ['presion', 'glucosa', 'peso', 'animo', 'dolor'] }, dias: { type: 'integer', description: 'cuántos días hacia atrás (1 a 365, por omisión 14)' } }) },
   { name: 'consultar_convocatorias', description: 'Las convocatorias de apoyo de la Secretaría de Desarrollo Humano y Bien Común de Chihuahua. No traen fechas: nunca inventes una; manda a la persona a abrir la sección Apoyos.', input_schema: objeto({ solo_discapacidad: { type: 'boolean' } }) },
   {

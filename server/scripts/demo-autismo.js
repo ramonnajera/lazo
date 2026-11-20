@@ -1,18 +1,14 @@
 // demo-autismo.js — carga la demostración «Mateo Ruiz» (joven autista, datos ficticios) en un perfil ya creado, por la API.
 // Uso: node scripts/demo-autismo.js <token-de-la-persona> [url]   (url por omisión: http://127.0.0.1:18800)
 // Las fechas son relativas al día de hoy en Chihuahua (UTC-6). Agrega datos: conviene correrlo sobre un perfil vacío.
-const B = process.argv[3] || 'http://127.0.0.1:18800';
-const TOK = process.argv[2];
-const api = async (method, path, body, token = TOK) => {
-  const r = await fetch(B + path, { method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined });
-  const t = await r.text(); const j = t ? JSON.parse(t) : null;
-  if (r.status >= 400) throw new Error(`${method} ${path} → ${r.status} ${t}`);
-  return j;
-};
-const HOY = new Date(Date.now() - 6 * 3600 * 1000); // fecha local de Chihuahua
-const dia = (n) => new Date(Date.UTC(HOY.getUTCFullYear(), HOY.getUTCMonth(), HOY.getUTCDate() + n)).toISOString().slice(0, 10);
+// También lo usa la demo web (web/api/_semilla.js) con un `api` en memoria.
 
-(async () => {
+/** Carga a Mateo con `api(method, path, body, token?)`; `token === null` es una llamada pública. */
+async function cargarMateo(api, ahora = new Date()) {
+  const HOY = new Date(ahora.getTime() - 6 * 3600 * 1000); // fecha local de Chihuahua
+  const dia = (n) => new Date(Date.UTC(HOY.getUTCFullYear(), HOY.getUTCMonth(), HOY.getUTCDate() + n)).toISOString().slice(0, 10);
+  const horaYa = HOY.toISOString().slice(11, 16); // lo de hoy posterior a esta hora aún no ha pasado
+
   await api('PATCH', '/perfil', { nombre: 'Mateo Ruiz', discapacidad: 'otra', preferencias: { textoGrande: true, altoContraste: false, voz: true } });
 
   const med = async (b) => (await api('POST', '/medicamentos', { inicio: dia(-10), ...b })).medicamento;
@@ -29,7 +25,7 @@ const dia = (n) => new Date(Date.UTC(HOY.getUTCFullYear(), HOY.getUTCMonth(), HO
     const dosis = [[risp, '08:00'], [sert, '09:00'], [risp, '20:00'], [mela, '21:30']];
     if ([1, 3, 5].includes(dow)) dosis.push([omega, '14:00']);
     for (const [m, h] of dosis) {
-      if (n === 0 && h >= '20:00') continue; // hoy: la de las 8 pm y la melatonina quedan pendientes para el demo
+      if (n === 0 && (h >= '20:00' || h > horaYa)) continue; // hoy: la de las 8 pm y la melatonina quedan pendientes para el demo
       const estado = omitidas.has(`${m.id}:${f}:${h}`) ? 'omitida' : 'tomada';
       await api('POST', '/tomas', { medicamentoId: m.id, fecha: f, hora: h, estado });
     }
@@ -47,7 +43,7 @@ const dia = (n) => new Date(Date.UTC(HOY.getUTCFullYear(), HOY.getUTCMonth(), HO
   await cita({ especialista: 'Laboratorio', motivo: 'Glucosa y perfil de lípidos en ayunas', lugar: 'Laboratorio del Hospital General', fecha: dia(14), hora: '07:30', transporte: 'Lo lleva su mamá', notas: '8 horas de ayuno. Explicarle el piquete con anticipación' });
   await cita({ especialista: 'Psicología', motivo: 'Terapia cognitivo-conductual: manejo de la ansiedad', lugar: 'Consultorio particular, Av. Universidad 1820', fecha: dia(17), hora: '17:00', transporte: 'Camión ruta 3', notas: '' });
 
-  const m = (tipo, valor, n, hora, nota = '') => api('POST', '/mediciones', { tipo, valor, fecha: dia(n), hora, nota });
+  const m = async (tipo, valor, n, hora, nota = '') => (n === 0 && hora > horaYa ? null : api('POST', '/mediciones', { tipo, valor, fecha: dia(n), hora, nota }));
   await m('peso', { kg: 71.8 }, -9, '07:40', 'En ayunas');
   await m('glucosa', { mgdl: 92 }, -9, '07:45', 'En ayunas');
   await m('presion', { sistolica: 118, diastolica: 76, pulso: 74 }, -8, '19:00');
@@ -68,6 +64,22 @@ const dia = (n) => new Date(Date.UTC(HOY.getUTCFullYear(), HOY.getUTCMonth(), HO
   const { codigo } = await api('POST', '/circulo/invitacion');
   await api('POST', '/circulo/unirse', { codigo, nombre: 'Laura Ruiz', parentesco: 'Mamá' }, null);
 
-  const r = await api('GET', '/tomas');
-  console.log('listo:', (await api('GET', '/medicamentos')).medicamentos.length, 'medicinas,', (await api('GET', '/citas')).citas.length, 'citas,', (await api('GET', '/mediciones?dias=30')).mediciones.length, 'mediciones; hoy:', r.tomas.map((t) => `${t.hora} ${t.nombre} ${t.estado}`).join(' | '));
-})().catch((e) => { console.error('ERROR', e.message); process.exit(1); });
+}
+
+module.exports = { cargarMateo };
+
+if (require.main === module) {
+  const B = process.argv[3] || 'http://127.0.0.1:18800';
+  const TOK = process.argv[2];
+  const api = async (method, path, body, token = TOK) => {
+    const r = await fetch(B + path, { method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    const t = await r.text(); const j = t ? JSON.parse(t) : null;
+    if (r.status >= 400) throw new Error(`${method} ${path} → ${r.status} ${t}`);
+    return j;
+  };
+  (async () => {
+    await cargarMateo(api);
+    const r = await api('GET', '/tomas');
+    console.log('listo:', (await api('GET', '/medicamentos')).medicamentos.length, 'medicinas,', (await api('GET', '/citas')).citas.length, 'citas,', (await api('GET', '/mediciones?dias=30')).mediciones.length, 'mediciones; hoy:', r.tomas.map((t) => `${t.hora} ${t.nombre} ${t.estado}`).join(' | '));
+  })().catch((e) => { console.error('ERROR', e.message); process.exit(1); });
+}

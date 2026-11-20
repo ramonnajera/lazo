@@ -146,7 +146,7 @@ function validarCita(b, previo) {
 
 // ---------- aplicación ----------
 
-function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.descargar, convUrl = C.PAGE_URL, maxHogares = 200, transcribir = null, llm = undefined } = {}) {
+function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.descargar, convUrl = C.PAGE_URL, maxHogares = 200, transcribir = null, llm = undefined, memoria = null } = {}) {
   const store = new Store(dataFile);
   const ahora = () => T.local(now());
   let ultimaActualizacionConv = 0;
@@ -156,7 +156,7 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
 
   const rutas = [];
   const ruta = (method, re, acceso, fn, opciones = {}) => rutas.push({ method, re, acceso, fn, ...opciones });
-  const memoriaChat = Conv.memoria(() => now().getTime());
+  const memoriaChat = memoria || Conv.memoria(() => now().getTime()); // la demo web trae la suya (sin estado en el servidor)
   const chatsPorDia = new Map(); // id de token → { fecha, n } (tope diario para cuidar el gasto del modelo)
   const MAX_CHATS_POR_DIA = 80;
   const audiosPorToken = new Map(); // id de token → marcas de tiempo (límite de audios por minuto)
@@ -502,7 +502,7 @@ function createApp({ dataFile = null, now = () => new Date(), fetchHtml = C.desc
         const est = new Map(Rs.estimar(d, n, tol).map((r) => [r.id, r]));
         return { medicinas: d.medicamentos.filter((m) => m.activo !== false).map((m) => ({ nombre: m.nombre, dosis: m.dosis, horarios: m.horarios, instrucciones: m.instrucciones, quedan: m.existencias ?? null, alcanza_para_dias: est.has(m.id) ? est.get(m.id).diasRestantes : null, se_acaba: est.has(m.id) ? est.get(m.id).seAcaba : null })) };
       },
-      consultar_citas: async () => ({ citas: R.proximasCitas(d, n).map((c) => ({ especialista: c.especialista, fecha: c.fecha, hora: c.hora, lugar: c.lugar, motivo: c.motivo })) }),
+      consultar_citas: async () => ({ citas: R.proximasCitas(d, n).map((c) => ({ especialista: c.especialista, fecha: c.fecha, hora: c.hora, lugar: c.lugar, motivo: c.motivo, transporte: c.transporte || '', notas: c.notas || '' })) }),
       consultar_mediciones: async ({ tipo, dias }) => {
         if (tipo && !M.TIPOS.includes(tipo)) throw bad('tipo no válido');
         const desde = T.addDays(n.date, -Math.min(365, Math.max(1, Number(dias) || 14)));

@@ -15,6 +15,10 @@ Gratuito · Código abierto · Accesible desde su diseño
 ![Contraste](https://img.shields.io/badge/contraste-%E2%89%A5%207%3A1-7A2FC0?style=flat-square)
 ![Licencia](https://img.shields.io/badge/licencia-MIT-3B4658?style=flat-square)
 
+### [▶ Pruébalo en tu navegador: lazoapp.vercel.app](https://lazoapp.vercel.app)
+
+<sub>La app real con los datos de Mateo (ficticios): háblale, márcale una toma, revisa sus citas. Incluye el video de presentación.</sub>
+
 <sub>Proyecto presentado al <i>Premio Estatal por la Discapacidad «Manuel Trueva Martínez 2026»</i> (Chihuahua).<br>Todas las demostraciones usan <b>personas y datos ficticios</b>.</sub>
 
 </div>
@@ -105,3 +109,22 @@ Sin cuentas ni analítica. Terceros, solo cuando hablas o escribes una frase lib
 MIT. Ver [`LICENSE`](LICENSE) y [`desktop/THIRD_PARTY.md`](desktop/THIRD_PARTY.md).
 
 <div align="center"><br><img src="docs/entrega/capturas/lazo_logo_azul_sin_fondo.png" alt="" width="40"><br><sub>Hecho en Chihuahua para que nadie se quede fuera del cuidado de su salud.</sub></div>
+
+---
+
+## Demo web
+
+`web/` publica en [lazoapp.vercel.app](https://lazoapp.vercel.app) la isla de Windows funcionando en el navegador, junto con el video y la presentación del proyecto.
+
+- **La interfaz** son los mismos paneles de `desktop/src`; las llamadas a Tauri se cambian por pequeños *shims* del navegador (`web/src/shims`).
+- **El servidor** es el mismo `server/src`, copiado dentro de una función de Vercel (`web/api/lazo.js`) que lo arranca en memoria en cada petición.
+- **Los datos** de Mateo viven en el navegador de cada visitante (`localStorage`) y viajan en cada petición: no hay base de datos ni datos de nadie más. Se vuelven a sembrar cada día.
+- **El chat y la voz** usan Claude y Whisper (Groq), con topes por visitante; si se pasan, contesta el intérprete de frases.
+
+```bash
+cd web && npm install
+npm run armar                    # copia el servidor, compila y deja todo en web/.salida
+node scripts/servir.mjs          # prueba local en http://localhost:4747
+npm run publicar                 # sube .salida a Vercel (proyecto «lazo»)
+```
+
