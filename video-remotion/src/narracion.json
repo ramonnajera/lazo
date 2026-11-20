@@ -1,0 +1,97 @@
+[
+ {
+  "id": "00_portada",
+  "texto": "Lazo. Un acompañante para las medicinas, las citas y el bienestar de personas con discapacidad visual, motriz o en el espectro autista, y para quienes las cuidan.",
+  "dur": 11.832
+ },
+ {
+  "id": "01_problema",
+  "texto": "Cuidar la salud todos los días exige leer, recordar, tocar botones pequeños y coordinarse con otras personas. Para una persona con discapacidad visual o motriz, o para una persona autista, cada uno de esos pasos puede ser una barrera. Cuando falla uno, falla el tratamiento: se omite una dosis, se pierde una cita, o quien cuida se entera tarde.",
+  "dur": 24.6
+ },
+ {
+  "id": "02_datos",
+  "texto": "En Chihuahua, el Plan Estatal de Desarrollo reporta más de quinientas ochenta y siete mil personas con alguna limitación o discapacidad. La Organización Mundial de la Salud estima que alrededor de una de cada cien niñas y niños está en el espectro autista, y que en las enfermedades crónicas solo cerca de la mitad de las personas sigue su tratamiento a largo plazo.",
+  "dur": 22.584
+ },
+ {
+  "id": "03_objetivo",
+  "texto": "El objetivo de Lazo es dar autonomía en el cuidado diario de la salud, y mantener informado a quien acompaña, con una herramienta gratuita, de código abierto y accesible desde su diseño, en el teléfono y en la computadora. No es asistencialista: la persona decide y actúa, y la tecnología se adapta a ella.",
+  "dur": 20.856
+ },
+ {
+  "id": "04_mateo",
+  "texto": "Para mostrarlo, conozcamos a Mateo, una persona ficticia. Es un joven autista. Toma risperidona, por eso vigila su peso y su glucosa, y lleva terapia ocupacional y de lenguaje. Su mamá, Laura, lo acompaña.",
+  "dur": 17.376
+ },
+ {
+  "id": "05_hoy",
+  "texto": "Esta es la pantalla de inicio. Lo primero que Mateo alcanza es el botón para hablar con Lazo. Abajo aparece la medicina que toca ahora, en letra grande. La alarma suena aunque no haya internet, se lee en voz alta, y se confirma con un solo toque: ya la tomé.",
+  "dur": 19.416
+ },
+ {
+  "id": "06_chat",
+  "texto": "Mateo puede hablar con Lazo con su voz, o escribir si lo prefiere, y tocar frases sugeridas. Lazo entiende el lenguaje natural: le dice qué tiene mañana, registra sus tomas y agenda sus citas. Nunca diagnostica ni cambia una dosis.",
+  "dur": 17.136
+ },
+ {
+  "id": "07_citas",
+  "texto": "Los cambios inesperados pueden generar ansiedad. Por eso cada cita guarda notas pensadas para él, como llevar sus audífonos de cancelación de ruido, y Lazo se la recuerda la víspera y dos horas antes.",
+  "dur": 13.896
+ },
+ {
+  "id": "08_medicinas",
+  "texto": "En medicinas, Lazo calcula para cuántos días alcanza cada una, siguiendo su calendario real, y avisa cuando hay que resurtir.",
+  "dur": 9.192
+ },
+ {
+  "id": "09_salud",
+  "texto": "En cómo estoy, Mateo anota su presión, glucosa, ánimo, dolor y peso con botones grandes de colores. Si un valor sale de rango, aparece un aviso orientativo, nunca un diagnóstico, para llevarlo a su consulta.",
+  "dur": 15.96
+ },
+ {
+  "id": "10_ayuda",
+  "texto": "Si Mateo necesita ayuda, basta con un botón, que pide confirmación para evitar toques accidentales, o con decir: necesito ayuda. Lazo avisa de inmediato a su círculo de cuidado y le ofrece llamar al nueve, uno, uno.",
+  "dur": 15.888
+ },
+ {
+  "id": "11_cuidador",
+  "texto": "Su mamá, Laura, se unió al círculo con un código de seis dígitos. Ve, solo en lectura, sus tomas, sus citas y sus avisos, y el pedido de ayuda aparece primero, con alarma.",
+  "dur": 13.944
+ },
+ {
+  "id": "12_isla",
+  "texto": "En la computadora, Lazo vive en una barra en la parte superior de la pantalla. Muestra el mismo día, sincronizado con el teléfono, avisa de las tomas y de las citas, y el dictado por voz se procesa en la propia computadora.",
+  "dur": 15.168
+ },
+ {
+  "id": "13_accesibilidad",
+  "texto": "La accesibilidad es el centro del proyecto: contraste de al menos siete a uno, modo amarillo sobre negro, letra hasta el doble de tamaño, botones de al menos sesenta y cuatro puntos, lector de pantalla en cada elemento, y ningún estado que se comunique solo con color.",
+  "dur": 17.376
+ },
+ {
+  "id": "14_apoyos",
+  "texto": "Lazo también reúne las convocatorias de apoyo de la Secretaría de Desarrollo Humano y Bien Común, con las de discapacidad primero y el enlace oficial de cada una. No inventa fechas.",
+  "dur": 12.648
+ },
+ {
+  "id": "15_metodologia",
+  "texto": "El prototipo funciona de punta a punta: un servidor propio, la aplicación para Android y el asistente para Windows. Está respaldado por cuatrocientas cincuenta y dos pruebas automáticas, incluidas pruebas de pantalla con lector y con letra al doble.",
+  "dur": 16.752
+ },
+ {
+  "id": "16_metas",
+  "texto": "Lazo ya se ha probado en casa: Ramón lo ha usado en el cuidado de su hijo. Lo que sigue es un piloto con veinte personas y sus cuidadores en seis meses, quinientos hogares en dos años con asociaciones y DIF municipales, y libre para cualquier persona del estado.",
+  "dur": 17.496
+ },
+ {
+  "id": "17_replicable",
+  "texto": "Lazo es código abierto, sin cuentas ni pagos. Cualquier municipio, DIF o asociación puede instalar su propio servidor, con sus propios datos, en los sesenta y siete municipios de Chihuahua.",
+  "dur": 13.464
+ },
+ {
+  "id": "18_cierre",
+  "texto": "Lazo devuelve el control a la persona, y tranquilidad a quien la cuida. Gracias por su atención.",
+  "dur": 7.344
+ }
+]
